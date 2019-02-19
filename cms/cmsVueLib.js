@@ -813,6 +813,11 @@ Vue.component('schema-text',{
         </span>
         <span class="form-desc">Auto generate output.</span>
       </div>
+      <div v-show="my.auto=='html'&&!my.block" class="form-grid">
+        <label class="form-lbl">Wrapper:</label>
+        <span class="form-input"><input type="checkbox" v-model="my.strip"/> Strip &lt;p&gt;...&lt;/p&gt; wrapper</span>
+        <span class="form-desc">Strip wrapper generated for single line of markdown.</span>
+      </div>
       </fieldset>
       <fieldset class="fieldset-element"><legend class="legend-element"> Constraints... </legend>
       <div class="form-grid">
@@ -862,7 +867,7 @@ Vue.component('schema-text',{
       </fieldset>
     </div>
     </div>`,
-  created: function() { if (this.my.block&&this.my.auto) this.chkFrameReady(); if (this.my.auto) this.render(); },
+  created: function() { if (this.my.auto) { if (this.my.block) {this.chkFrameReady();} else {this.render();}; }; },
   computed: {
     autoHeight: function() { return ({ sm: '100px', med: '200px', lrg: '400px', xl: '800px' })[this.my.blocksize]||0; },
     isVisible: function () { return !this.active.child.hidden || (this.mode=='developer'); },
@@ -874,6 +879,7 @@ Vue.component('schema-text',{
       return new RegExp(pat,flags);
     }
   },
+  updated: function() { if (this.my.block&&this.my.wrapper=='p') this.my.wrapper = ''; },
   methods: {
     chkFrameReady: function() {
       if (window.cfg&&window.cfg.autoTextFrame) {
@@ -885,7 +891,7 @@ Vue.component('schema-text',{
           var element = doc.getElementById(window.cfg.autoTextFrame.element);
           if (element) {
             this.frame.element = element;
-            this.frame.element.innerHTML = md2html.render(this.my.data||'');
+            this.render();
             return;
           };
         };
@@ -908,9 +914,9 @@ Vue.component('schema-text',{
     },
     render: function() {
       if (this.my.block) {
-        if (this.frame.element) this.frame.element.innerHTML = md2html.render(this.my.data||'');
+        if (this.frame.element) this.frame.element.innerHTML = md2html(this.my.data||'');
       } else {
-        this.preview = md2html.render(this.my.data||'');
+        this.preview = md2html(this.my.data||'',this.my.strip);
       };
     }
   }

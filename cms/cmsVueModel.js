@@ -136,7 +136,7 @@ var vm = new Vue({
         };
         return tmp;
       } else {
-        return child.auto ? md2html.render(child.data) : child.data;  // presently only supports MD->HTML
+        return child.auto ? md2html(child.data,!child.block&&child.strip) : child.data;  // presently only supports MD->HTML
       };
     },
     getHeritage: function(heritage='*') {
@@ -440,8 +440,11 @@ var vm = new Vue({
 
 var scribe = vm.scribeObj();
 
-var mdParser = window.markdownit('commonmark');
-var md2html = mdParser.use(markdownItAttrs).use(markdownitLinkPlus).use(markdownitSpan).use(markdownitDiv);
+var md = window.markdownit('commonmark').use(markdownItAttrs).use(markdownitLinkPlus).use(markdownitDiv);
+var md2html = function(content,strip=false) {
+  let rendered = md.render(content);
+  return strip ? rendered.replace(/^<p>|<\/p>(?:\n)?$/gm,'') : rendered;
+};
 vm.loadCfg()
   .then(res=>{scribe.log('Configuration successfully loaded!'); return res;})
   .then(res=>{
