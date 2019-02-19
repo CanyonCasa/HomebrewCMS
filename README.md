@@ -116,6 +116,7 @@ _HomebrewCMS_ assumes the following server directory structure for files, which 
 ### Changes
 
 - Initial release.
+- Second release. Schema not compatible with prior release.
 
 ### To Do
 

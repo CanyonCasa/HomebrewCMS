@@ -15,11 +15,11 @@ var StorageWrapper = {
     Vue.prototype.storage = {
       emulated: emulate,
       local: {
-        recall: key => fromJSON(localStore[key]),
+        recall: key => key ? fromJSON(localStore[key]) : localStore,
         save: (key,value) => localStore[key]=toJSON(value)
       },
       session: {
-        recall: key => fromJSON(sessionStore[key]),
+        recall: key => key ? fromJSON(sessionStore[key]) : sessionStore,
         save: (key,value) => sessionStore[key]=toJSON(value)
       }
     };

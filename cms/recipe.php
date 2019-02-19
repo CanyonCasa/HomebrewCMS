@@ -48,7 +48,7 @@ function echo_error($code,$detail=null) {
 $base = rtrim($_SERVER['DOCUMENT_ROOT'],'\\/');
 $server = $_SERVER['REQUEST_SCHEME'].'//'.$_SERVER['SERVER_NAME'].(($_SERVER['SERVER_PORT']!="80")?':'.$_SERVER['SERVER_PORT']:'');
 $cfg = [
-  'version' => '20181105v0.1',
+  'version' => '20190129v1',
   'authAs' => 'token',
   'folders' => [
     'data' => '/data',
@@ -64,7 +64,11 @@ $cfg = [
     'preview' => $server
   ],
   'pretty' => false,
-  'session' => 86400
+  'session' => 86400,
+  'autoTextFrame' => [
+    'element' => 'section',
+    'src' => '/cms/text.html'
+  ]
 ]; 
 // override with site_cfg -- note: loaded server-side to prevent client-side tampering...
 try {
@@ -109,7 +113,8 @@ if (!$credentials) echo_error(500,['detail'=>'Credentials file syntax error!']);
 
 if (isset($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW'])) { // basic auth header values?
   // try basic authentication... as user and/or 'authAs' group token authentication...
-  $user = getKey($_SERVER['PHP_AUTH_USER'],$credentials['users'],[]);
+  $username = strtolower($_SERVER['PHP_AUTH_USER']);
+  $user = getKey($username,$credentials['users'],[]);
   if ($user['status']=='ACTIVE') {
     if ($cfg['session']&&$user['session']) { // password may be prior session id
       $authenticated = $user['session']['id']==$_SERVER['PHP_AUTH_PW'];
@@ -138,8 +143,8 @@ if ($_SERVER['REQUEST_METHOD']=='GET') {
   
   // permissions ($user['member']) exist for validated login only, provided for client informational use...
   if ($prefix.$recipe=='@login') {
-    $user['session'] = ['id'=>getKey('id',getKey('session',$user,[]),uniqid()),'expires'=>date("Y-m-d\TH:i:sO",time()+$cfg['session'])];
-    $credentials['users'][$_SERVER['PHP_AUTH_USER']] = $user;
+    $user['session'] = ['id'=>uniqid(),'expires'=>date("Y-m-d\TH:i:sO",time()+$cfg['session'])];
+    $credentials['users'][$username] = $user;
     file_put_contents($restricted.'/credentials.json',json_encode($credentials,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES));
     unset($user['hash']);
     echo_json(['user'=>$user]);

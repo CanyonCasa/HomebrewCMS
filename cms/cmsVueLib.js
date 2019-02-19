@@ -1,4 +1,5 @@
 /// Vue components library for HomebrewCMS
+
 //Vue.filter('capitalize', str => { s = str ? str.toString : ''; return s.charAt(0).toUpperCase() + s.slice(1); };
 
 Vue.component('tip',{
@@ -19,13 +20,14 @@ Vue.component('cms-menu',{
     <i class="fas fa-quote-left tooltip" @click="action('text')"><tip class="tip-left">add line of text value</tip></i>
     <i class="far fa-calendar-alt tooltip" @click="action('date')"><tip class="tip-left">add date value</tip></i>
     <i class="fas fa-dice tooltip" @click="action('enumerated')"><tip class="tip-left">add enumerated value</tip></i>
+    <i class="fas fa-link tooltip" @click="action('link')"><tip class="tip-left">add hyperlink</tip></i>
     </span>
     
     <span v-show="menu=='manager'">
-    <span class="upper-case tooltip" @click="action('context')">[{{ context }}]<tip>change context</tip></span>
     <span class="upper-case tooltip" @click="action('mode')">{{ mode }}<tip>change user mode</tip></span>
     <i class="fas fa-cloud-download-alt fa-fw tooltip" @click="action('download')"><tip>download</tip></i>
-    <i class="far fa-edit fa-fw tooltip" @click="action('edit')"><tip>edit schema/data</tip></i>
+    <i class="fas fa-info fa-fw tooltip" v-show="see" @click="action('edit','schema')"><tip>edit schema</tip></i>
+    <i class="far fa-edit fa-fw tooltip" @click="action('edit','data')"><tip>edit data</tip></i>
     <i class="fas fa-database fa-fw tooltip" v-show="see" @click="action('result')"><tip>result info</tip></i>
     <i class="far fa-image tooltip" @click="action('resources')"><tip>upload image and documents</tip></i>
     <i class="fas fa-pen-fancy fa-fw tooltip" v-show="false" @click="action('style')"><tip>manage style</tip></i>
@@ -33,7 +35,7 @@ Vue.component('cms-menu',{
     <i class="fas fa-user-cog fa-fw tooltip" v-show="see" @click="action('user')"><tip>manage user(s)</tip></i>
     <i class="fas fa-cloud-upload-alt fa-fw tooltip" @click="action('publish')"><tip>publish</tip></i>
     <i class="far fa-comment fa-fw tooltip" v-show="see" @click="action('log')"><tip>log</tip></i>
-    <i class="fas fa-bug fa-fw tooltip" v-show="see" @click="action('debug')"><tip>toggle debug code</tip></i>
+    <i class="fas fa-bug fa-fw tooltip" v-show="see" @click="(e)=>action('debug',e.ctrlKey)"><tip>toggle debug code</tip></i>
     <i class="far fa-question-circle fa-fw tooltip" @click="action('help')"><tip>help</tip></i>
     </span>
     
@@ -41,7 +43,7 @@ Vue.component('cms-menu',{
     <span v-show="option=='*'"><i class="fas fa-folder-plus fa-fw tooltip" @click="action('expand')"><tip>cycle expand/collapse tree</tip></i></span>
     <span v-show="option=='+'"><i class="fas fa-folder-minus fa-fw tooltip" @click="action('expand')"><tip>cycle expand/collapse tree</tip></i></span>
     <span v-show="option=='-'"><i class="fas fa-folder-open fa-fw tooltip" @click="action('expand')"><tip>cycle expand/collapse tree</tip></i></span>
-    <i class="fas fa-copy fa-fw tooltip" v-show="see" @click="action('copy')"><tip>copy element</tip></i>
+    <i class="fas fa-copy fa-fw tooltip" v-show="see" @click="(e)=>action('copy',e)"><tip>copy element</tip></i>
     <i class="fas fa-angle-double-up fa-fw tooltip" v-show="see" @click="action('move','up')"><tip>move element up</tip></i>
     <i class="fas fa-angle-double-down fa-fw tooltip" v-show="see" @click="action('move','down')"><tip>move element down</tip></i>
     <i class="fas fa-outdent fa-fw tooltip" v-show="see" @click="action('move','promote')"><tip>promote element</tip></i>
@@ -49,13 +51,9 @@ Vue.component('cms-menu',{
     <i class="far fa-trash-alt fa-fw tooltip" v-show="see" @click="(e)=>action('delete',e)"><tip>delete element - CTRL+CLICK</tip></i>
     </span>
     
-    <span v-show="menu=='context'">
-    <i class="fas fa-exchange-alt fa-fw tooltip" v-show="see" @click="action('context')"><tip>swap schema/data context</tip></i>
-    </span>
-    
     <span v-show="menu=='result'">
     <i class="fas fa-exchange-alt fa-fw tooltip" v-show="see" @click="action('context')"><tip>swap schema/data context</tip></i>
-    <i class="fas fa-sitemap fa-fw tooltip" v-show="see" @click="action('refresh')"><tip>refresh data output</tip></i>
+    <!--<i class="fas fa-sitemap fa-fw tooltip" v-show="see" @click="action('refresh')"><tip>refresh data output</tip></i>-->
     <i class="fas fa-copy fa-fw tooltip" v-show="see" @click="action('clip')"><tip class="tip-right">copy schema/data to clipboard</tip></i>
     </span>
     
@@ -97,7 +95,6 @@ Vue.component('e-notes',{
     </div>`,
   methods: {
     action: function(act,arg) {
-      ///console.log("action:", act, arg);
       switch (act) {
         case 'add': this.notes.push(this.newNote); this.newNote = ''; break;
         case 'chg': this.edit = -1; break;
@@ -158,7 +155,7 @@ Vue.component('history',{
   template: `
     <div>
     <fieldset class="fieldset-element"><legend class="legend-element"> History... </legend>
-      <div class="history-grid" v-for="h in history">
+      <div class="history-grid" v-for="h in history.slice().reverse()">
       <span class="history-dtd">{{ h.dtd }}</span>
       <span class="history-author">{{ h.author }}</span>
       <span class="history-note">{{ h.note }}</span>
@@ -171,14 +168,11 @@ Vue.component('scribe',{
   props: ['msgs'],
   template: `
     <div class="scribe">
-    <span class="msg-grid" v-for="msg in msgsLIFO">
+    <span class="msg-grid" v-for="msg in msgs.slice().reverse()">
       <span :class="'msg-date msg-' + msg.level"><i class="far fa-clock tooltip"><tip class="tip-left">{{ msg.dtd }}</tip></i></span>
       <span :class="'msg-text msg-' + msg.level"> {{ msg.text }}</span>
     </span>
-    </div>`,
-  computed: {
-    msgsLIFO: function() { return this.msgs.slice().reverse(); }
-  }
+    </div>`
 });
 
 Vue.component('mngr-download',{
@@ -290,7 +284,6 @@ Vue.component('mngr-resources',{
       var fReader = new FileReader();
       fReader.readAsDataURL(this.file);
       fReader.onloadend = event=>{
-        console.warn("file:", event.target.result);
         this.contents = event.target.result;
         if (this.type=='images' && this.contents.length > 250000) this.msg = "Large images slow page load times, consider resizing before upload.";
         if (this.contents.length > 8000000) this.msg = "File too large to upload; must be uploaded via FTP.";
@@ -304,7 +297,7 @@ Vue.component('mngr-resources',{
       this.links.ref = makePath(this.folders[this.type],name);
       switch (this.type) {
         case 'images': 
-          this.links.mark = `![${name}](${this.links.ref} "${this.notation}")`;
+          this.links.mark = `![${this.notation||name}](${this.links.ref} "${this.notation}")`;
           this.links.html = `<img src="${this.links.ref}" alt="${this.notation}" />`;
           break;
         default: 
@@ -321,93 +314,52 @@ Vue.component('mngr-resources',{
 });
 
 Vue.component('mngr-publish',{
-  data: () => ({ 
-    args: {
-      data: { include:true, backup:true, note:'', history:{} },
-      schema: { include:false, backup:true, note:'', history:{}, version:'' }
-    },
-    debug: false,
-    newVersion: ''
-  }),
-  props: ['author','mode','sources','version'],
+  data: () => ({ backup:true, dx: new Date().style('YYYYMMDD'), newVersion: '', note: '' }),
+  props: ['author','sources','version'],
   template: `
     <div>
-      <fieldset class="fieldset-element" v-show="admin"><legend class="legend-element"> Schema... </legend>
+      <fieldset class="fieldset-element"><legend class="legend-element"> Settings... </legend>
       <div class="form-grid">
-        <label class="form-lbl">Options:</label>
-        <span class="form-input">
-          <input type="checkbox" v-model="args.schema.include" /> Include
-          <input type="checkbox" v-model="args.schema.backup"/> Backup
-        </span>
-        <span class="form-desc">Always included if published, which forces version and history updates.</span>
+        <label class="form-lbl">Backup:</label>
+        <span class="form-input"><input type="checkbox" v-model="backup"/> Enable Backup</span>
+        <span class="form-desc">Generates a timestamped backup file on server.</span>
       </div>
       <div class="form-grid">
         <label class="form-lbl">Version:</label>
-        <input class="form-input" type="text" v-model="newVersion" ref="version" @input="chgVer"/>
+        <input class="form-input" type="text" v-model="newVersion" ref="version"/>
         <span class="form-desc">Current ({{ version }})</span>
       </div>
       <div class="form-grid">
         <label class="form-lbl">Note: </label>
-        <input class="form-input form-stretch" type="text" ref="schemaNote" v-model:value="args.schema.note" />
-        <span class="form-desc">Release note of schema version. [REQUIRED]</span>
+        <input class="form-input form-stretch" type="text" ref="note" v-model:value="note" />
+        <span class="form-desc">Brief description of changes. [REQUIRED to publish!]</span>
       </div>
       </fieldset>
-      <fieldset class="fieldset-element"><legend class="legend-element"> Content (Data)... </legend>
+      <fieldset class="fieldset-element"><legend class="legend-element"> Publishing... </legend>
+      <p v-if="!author" class="alert">You must login to PREVIEW and PUBLISH!</p>
       <div class="form-grid">
-        <label class="form-lbl">Options:</label>
-        <span class="form-input">
-        <input type="checkbox" :disabled="!admin" v-model="args.data.include" /> Include
-        <input type="checkbox" v-model="args.data.backup"/> Backup
-        </span>
-        <span class="form-desc"></span>
-      </div>
-      <div class="form-grid">
-        <label class="form-lbl">Note: </label>
-        <input class="form-input form-stretch" type="text" ref="dataNote" v-model:value="args.data.note" />
-        <span class="form-desc">Release note. Brief statement of reason for upload. [REQUIRED]</span>
-      </div>
-      </fieldset>
-      <fieldset class="fieldset-element"><legend class="legend-element"> Site Upload... </legend>
-      <fieldset class="fieldset-element" v-show="!author"><legend class="legend-element"> Notice... </legend>
-      <p class="alert">You must login to PREVIEW and PUBLISH!</p>
-      </fieldset>
-      <div class="form-grid">
-        <label class="form-lbl form-stretch"><button :disabled="!previewCK(admin)" @click="up('preview')">PREVIEW</button></label>
-        <span class="form-input">Uploads selected files to the preview site: [{{ sources.preview }}]</span>
+        <label class="form-lbl form-stretch"><button :disabled="!author" @click="publish('preview')">PREVIEW</button></label>
+        <span class="form-input">Uploads schema and data files to the preview site: [{{ sources.preview }}]</span>
         <span class="form-desc">NOTE: Does not impact live website.</span>
       </div>
       <div class="form-grid">
-        <label class="form-lbl form-stretch"><button :disabled="!liveCK(admin)" @click="up('live')">PUBLISH</button></label>
-        <span class="form-input">Uploads selected files to the live web site: [{{ sources.live }}]</span>
+        <label class="form-lbl form-stretch"><button :disabled="!note" @click="publish('live')">PUBLISH</button></label>
+        <span class="form-input">Uploads schema and data files to the live web site: [{{ sources.live }}]</span>
         <span class="form-desc">NOTE: Records history and changes both preview and live websites.</span>
       </div>
       </fieldset>
-      <pre v-if="debug" class="debug">{{ args }}</pre>
     </div>`,
-  computed: {
-    admin: function() { return this.mode=='developer'; }
-  },
-  updated: function() { this.debug = window.debug; },
+  created: function() { this.makeVersion(); },
   methods: {
-    chgVer: function(e) { this.args.schema.version = e.target.value; },
-    liveCK: function(dev) { with(this.args) return (this.author && (dev ? // must be logged in to publish and
-      ((schema.include&&schema.note)&&(data.include&&data.note)) :        // as developer must save both schema and data
-      (data.include&&data.note) )) },                                     // as author, publish data, but schema also saved for history
-    previewCK: function(dev) { with(this.args) return dev ? 
-      (schema.include||data.include) :                                    // as developer can preview data and/or schema with note 
-      (data.include&&!schema.include); },                                 // as author can only preivew data
-    up: function(dest) {
-      var args = this.args.copyByValue();
-      args.schema.version = this.$refs.version.value;
-      var dx = new Date().style('iso');
-      args.data.history = { dtd: dx, author:this.author, note:args.data.note };
-      args.schema.history = { dtd: dx, author:this.author, note:args.schema.note, version:args.schema.version };
-      this.$emit('act',{ action: 'publish', dest: dest, args: args });
-      if (dest='live') { this.args.schema.note=''; this.args.data.note=''; };   // prevent repeat form submission
+    makeVersion: function() { this.newVersion = (this.version&&(this.version.startsWith(this.dx))) ? this.version.replace(/v(\d+)/,(m,n)=>'v'+(+n+1)) : this.dx+'v1'; },
+    publish: function(dest) {
+      var history = { author: this.author, dtd: new Date().style('iso'), note: this.note, version: this.newVersion };
+      this.$emit('act',{ action: 'publish', dest: dest, args: {backup:this.backup,history:history} });
+      if (dest='live') this.note='';   // prevent repeat form submission
     }
   },
   watch: {
-    version: function() { var dx = new Date().style('YYYYMMDD'); this.newVersion=(this.version&&(this.version.includes(dx))) ? this.version.replace(/v(\d+)/,(m,n)=>'v'+(+n+1)) : dx+'v1'; }
+    version: function() { this.makeVersion(); }
   }
 });
 
@@ -467,10 +419,12 @@ Vue.component('mngr-users',{
 });
 
 Vue.component('schema-info',{
+  data: () => ({ series: false, trackSchema: true }),
   props: ['info'],
   template: `
     <div class="schema-info">
-    <fieldset class="master-fieldset"><legend class="master-legend"> Schema Info Propeties... </legend>
+    <fieldset class="fieldset-element fieldset-info">
+    <legend class="legend-element"> Schema Info Propeties... </legend>
     <div class="form-grid">
       <label class="form-lbl">Label:</label>
       <input class="form-input" type="text" v-model:value="info.label" />
@@ -478,14 +432,14 @@ Vue.component('schema-info',{
     </div>
     <div class="form-grid">
       <label class="form-lbl">Description:</label>
-      <input class="form-input form-stretch" type="text" v-model:value="info.description" />
+      <input class="form-input form-stretch" type="text" v-model="info.description" />
       <span class="form-desc">Brief description of schema</span>
     </div>
     <div class="form-grid">
       <label class="form-lbl">Type:</label>
       <span class="form-input">
-        <input type="radio" name="type" value="object" :checked="!isArray" @change="chgType" /> Unordered (object)
-        <input type="radio" name="type" value="array" :checked="isArray" @change="chgType"/> Ordered (array)
+        <input type="radio" value="unordered" v-model="info.container" /> Unordered (object)
+        <input type="radio" value="ordered" v-model="info.container" /> Ordered (array)
       </span>
       <span class="form-desc">Specifies whether data renders as an object or array</span>
     </div>
@@ -496,61 +450,53 @@ Vue.component('schema-info',{
     </div>
     <div class="form-grid">
       <label class="form-lbl">Schema File:</label>
-      <input class="form-input" type="text" v-model:value="info.files.schema" @input="track" />
+      <input class="form-input" type="text" v-model="info.files.schema" @input="track" />
       <span class="form-desc">Filename of schema file</span>
     </div>
     <div class="form-grid">
       <label class="form-lbl">Data File:</label>
       <span class="form-input">
-        <input type="text" v-model:value="info.files.data" />
-        <input id="info-track-data" type="checkbox" checked /> Track schema filename
+        <input type="text" v-model="info.files.data" />
+        <input type="checkbox" v-model="trackSchema" /> Track schema filename
       </span>
       <span class="form-desc">Filename of schema result data</span>
     </div>
+    <fieldset class="fieldset-element fieldset-info">
+    <legend class="legend-element"> Series Propeties... </legend>
     <div class="form-grid">
       <label class="form-lbl">Series:</label>
+      <span class="form-input"><input type="checkbox" ref="series" v-model:value="series" @input="(e)=>$emit('act','series',e.target.checked)" /> Sequential Data Files Mode</span>
+      <span class="form-desc">Specifies whether page data renders as sequential data files (i.e. blog, newsfeed, ...)</span>
+    </div>
+    <div v-if="series" class="form-grid">
+      <label class="form-lbl">Series Template:</label>
+      <input class="form-input" type="text" v-model="info.series.template" />
+      <span class="form-desc"><span v-if="series" class="text-white text-bold">REQUIRED! Defines the Vue component template used to render the series files</span></span>
+    </div>
+    <div v-if="series" class="form-grid">
+      <label class="form-lbl">Series File:</label>
       <span class="form-input">
-        <input type="checkbox" v-model="info.series.enabled" /> Sequential Data Files Mode
+        <input type="text" v-model="info.files.series" />
       </span>
-      <span class="form-desc">Specifies whether page data renders as sequential data files (i.e. blog)
-        <span v-if="info.series.enabled" class="text-white text-bold"><br>
-        Expects a schema child named "meta", with elements author, dtd (date), title, and brief (description),
-        which is stored with the index as metadata.</span>
-      </span>
+      <span class="form-desc">Filename template for serial posts</span>
     </div>
-    <div class="form-grid">
-      <button class="form-input" @click="$emit('regen')">Regenerate Unique IDs</button>
-      <span class="form-desc">Regenerates the schema and child ID's to ensure uniqueness.
-      </span>
-    </div>
-    <div v-show="false" class="form-grid">
-      <label class="form-lbl">Template File:</label>
-      <span class="form-input">
-        <input type="text" v-model:value="info.files.template" />
-        <input id="info-track-template" type="checkbox" checked /> Track schema filename
-      </span>
-      <span class="form-desc">Filename of template that references result data</span>
-    </div>
+    </fieldset><br>
+<!--    <div class="form-grid">
+      <button class="form-input" @click="$emit('act','regen')">Regenerate Unique IDs</button>
+      <span class="form-desc">Regenerates the schema and child ID's to ensure uniqueness.</span>
+    </div>-->
     <p class="alert">NOTE: Schema information only saved when schema published.</p>
     </fieldset>
-    <history :history="info.history"></history>
     </div>`,
-  computed: {
-    isArray: function() { return (this.info.dflt instanceof Array); }
-  },
+  created: function() { this.series = !!this.info.series; },
   methods: {
-    chgType: function(e) { this.$emit('chg',e.target.value); },
-    track: function(e) {
-      Vue.set(this.info.files,'schema',e.target.value);
-      if (document.getElementById('info-track-data').value) Vue.set(this.info.files,'data',e.target.value);
-      if (document.getElementById('info-track-template').value) Vue.set(this.info.files,'template',e.target.value.replace('.json','.html'));
-    }
-  }  
+    track: function(e) { if (this.trackSchema) Vue.set(this.info.files,'data',e.target.value); }
+  }
 });
 
 Vue.component('schema-series',{
   data: () => ({ action:'new', index:null, view:false }),
-  props: ['schema'],
+  props: ['mode','series'],
   template: `
     <div class="series">
     <fieldset class="fieldset-element fieldset-series"><legend class="legend-element"> Series Post (i.e.Blog)... </legend>
@@ -561,11 +507,11 @@ Vue.component('schema-series',{
       </span>-->
       <div class="form-grid">
         <label class="form-lbl">Title:</label>
-        <input type="text" class="form-input form-stretch" v-model="schema.series.meta.title" />
+        <input type="text" class="form-input form-stretch" v-model="meta.title" />
       </div>
       <div class="form-grid">
         <label class="form-lbl">Author:</label>
-        <input type="text" class="form-input" v-model="schema.series.meta.author" />
+        <input type="text" class="form-input" v-model="meta.author" />
       </div>
       <div class="form-grid">
         <label class="form-lbl">Dated:</label>
@@ -573,13 +519,18 @@ Vue.component('schema-series',{
       </div>
       <div class="form-grid">
         <label class="form-lbl">Brief:</label>
-        <input type="text" class="form-input form-stretch" v-model="schema.series.meta.brief" />
+        <input type="text" class="form-input form-stretch" v-model="meta.brief" />
         <span class="form-desc">A one-line description of the post content...</span>
       </div>
       <div class="form-grid">
         <label class="form-lbl">Keywords:</label>
-        <input type="text" class="form-input form-stretch" v-model="schema.series.meta.keywords" />
+        <input type="text" class="form-input form-stretch" v-model="meta.keywords" />
         <span class="form-desc">A comma separated list of search keywords...</span>
+      </div>
+      <div v-if="mode=='developer'" class="form-grid">
+        <label class="form-lbl">Template:</label>
+        <input type="text" class="form-input form-stretch" v-model="meta.template" />
+        <span class="form-desc">Template used to display series content.</span>
       </div>
       <div class="form-grid">
         <label class="form-lbl"><button @click="clear">CLEAR</button></label>
@@ -592,26 +543,26 @@ Vue.component('schema-series',{
     </div>`,
   computed: {
     caption: function() { return this.view ? 'HIDE PREVIOUS POSTINGS' : 'VIEW PREVIOUS POSTINGS' },
-    dtd: function() { return new Date().style('iso','local') }
+    dtd: function() { return new Date().style('iso','local') },
+    meta: function() { return this.series.meta||{}; }
   },
   methods: {
-    //act: function(msg) { this.$emit('act',msg); }
-    clear: function() { this.schema.meta = { author:'',title:'',brief:'' }; }
+    clear: function() { this.meta = { author:'', title:'', brief:'', dtd:'', keywords:'' }; }
   }
 });
 
 Vue.component('schema-tree',{
   data: function () { return { open: [] }; },
-  props: ['highlight','expand','mode','parent'],
+  props: ['heritage','highlight','expand','mode','parent'],
   template: `
     <ul class="schema-list">
-    <li class="schema-list-item" v-for="child,index in visibleChildren" @click.stop="touch(parent,index)">
+    <li class="schema-list-item" v-for="child,index in visibleChildren" @click.stop="touch(heir[index])">
       <span class="schema-container-icon" v-if="child.container">
       <i v-show="!isOpen(index)" class="fas fa-folder-plus" @click.stop="toggle(index)"></i>
       <i v-show="isOpen(index)" class="fas fa-folder-minus" @click.stop="toggle(index)"></i>
       </span>
-      <span :class="'schema-list-label tooltip'+((child.id==highlight)?' se-active':'')">{{ child.label }}<tip class="tip-left">{{ child.description }}</tip></span>
-      <schema-tree v-if="child.container" v-show="isOpen(index)" :highlight="highlight" :expand="expand" :mode="mode"
+      <span :class="'schema-list-label tooltip'+((heir[index]==highlight)?' se-active':'')">{{ child.label }}<tip class="tip-left">{{ child.description }}</tip></span>
+      <schema-tree v-if="child.container" v-show="isOpen(index)" :highlight="highlight" :expand="expand" :heritage="heir[index]" :mode="mode"
         :parent="parent.children[index]" @act="act"></schema-tree>
     </li>
     <li v-show="mode=='developer'" class="schema-add-child">
@@ -619,6 +570,7 @@ Vue.component('schema-tree',{
     </li>
     </ul>`,
   computed: {  // only gets called for schema-tree instance, which by definition will be a parent...
+    heir: function() { return (this.parent.children||[]).map((c,i)=>!c.hidden||this.mode=='developer' ? [this.heritage||'*',i].join('.') : null).filter(c=>c!==null); },
     id: function() { return makeArrayOf(this.parent.children.length,(v,i)=>this.name+'-'+i); },
     visibleChildren: function() { return (this.parent.children||[]).filter(c=>!c.hidden||this.mode=='developer'); }
   },
@@ -627,7 +579,7 @@ Vue.component('schema-tree',{
     addChild: function(m,c,o) { this.$emit('act',{action: 'add', parent: this.parent, element:c}) },
     toggle: function(index) { Vue.set(this.open,index,!this.open[index]); },
     isOpen: function(i) { return (this.open[i]&&(this.expand!='-'))||(this.expand=='+'); },
-    touch: function(parent,index) { this.$emit('act',{action: 'touch', parent: parent, index:index}); }
+    touch: function(heir) { this.$emit('act',{action: 'touch', heritage: heir}); }
   }
 });
 
@@ -635,14 +587,24 @@ Vue.component('schema-schema',{
   props: ['active','context','lock','mode'],
   template: `
     <div>
-      <fieldset class="fieldset-element" v-if="context=='schema'"><legend class="legend-element"> Root Schema... </legend>
-        <schema-info :info="active.child" @chg="chgType" @regen="regen"></schema-info>
+      <fieldset class="fieldset-element fieldset-master">
+      <legend class="legend-element legend-master">{{ schema.label }} ({{ context.toUpperCase() }})... </legend>
+      <span v-if="context=='schema'">
+        <schema-info :info="schema" @act="act"></schema-info>
+        <history :history="schema.history"></history>
+      </span>
+      <span v-else>
+        <schema-series v-if="schema.series" :mode="mode" :series="schema.series"></schema-series>
+        <component v-for="ch,i in schema.children" :is="'schema-'+ch.element" :active="activeChild(i)" :context="context" :key="i" :mode="mode"></component>
+      </span>
       </fieldset>
-      <component v-if="context=='data'" :is="'schema-container'" :active="active" :context="context" :mode="mode" @chg="$emit('chg')"></component>
     </div>`,
+  computed: {
+    schema: function() { return this.active.child; }
+  },
   methods: {
-    chgType: function(type) { this.$emit('act',{action:'info',type:type}); },
-    regen: function() { this.$emit('act',{action:'regen'}); }
+    act: function(a,x) { this.$emit('act',{action:a, option:x}); },
+    activeChild: function(i) { return this.$root.getHeritage([this.active.heir,i].join('.')); }
   }
 });
 
@@ -673,9 +635,9 @@ Vue.component('schema-boolean',{
         <span class="form-desc">Name of data variable set by schema element, if not element of array</span>
       </div>
       <div class="form-grid">
-        <label class="form-lbl">Default:</label>
-        <input class="form-input" type="checkbox" v-model="my.dflt" />
-        <span class="form-desc">Default value assigned to data variable set by schema element</span>
+        <label class="form-lbl">Value:</label>
+        <input class="form-input" type="checkbox" v-model="my.data" />
+        <span class="form-desc">Value assigned to data variable set by schema element</span>
       </div>
       <div class="form-grid">
         <label class="form-lbl">Flags:</label>
@@ -704,7 +666,7 @@ Vue.component('schema-boolean',{
     my: function() {return this.active.child; } // shorthand
   },
   methods: {
-    chg: function(e) { this.active.child.data = e.target.checked; this.$emit('chg'); }
+    chg: function(e) { this.active.child.data = e.target.checked; }
   }
 });
 
@@ -735,9 +697,9 @@ Vue.component('schema-numeric',{
         <span class="form-desc">Name of data variable set by schema element, if not element of array</span>
       </div>
       <div class="form-grid">
-        <label class="form-lbl">Default:</label>
-        <input class="form-input" type="text" v-model="my.dflt" @input="(e)=>{my.dflt=Number(e.target.value)}" />
-        <span class="form-desc">Default value assigned to data variable set by schema element</span>
+        <label class="form-lbl">Value:</label>
+        <input class="form-input" type="text" v-model="my.data" @input="(e)=>{my.data=Number(e.target.value)}" />
+        <span class="form-desc">Value assigned to data variable set by schema element</span>
       </div>
       <div class="form-grid">
         <label class="form-lbl">Flags:</label>
@@ -792,18 +754,17 @@ Vue.component('schema-numeric',{
     checkData: function(e) {
       if (e.target.value && this.re) {  // filter value if it and regular expression defined
           var match = e.target.value.match(this.re);
-          e.target.value = (match!==null) ? match[0] : this.active.child.dflt;
+          e.target.value = (match!==null) ? match[0] : this.active.child.data;
       };
-      // dflt and bound result if specified
-      e.target.value = bound(this.active.child.min,e.target.value,this.active.child.max,this.active.child.dflt);
+      // bound data if specified
+      e.target.value = bound(this.active.child.min,e.target.value,this.active.child.max,this.active.child.data);
       this.active.child.data = Number(e.target.value);  //update data field
-      this.$emit('chg');  // notify change
     }
   }
 });
 
 Vue.component('schema-text',{
-  data: ()=> ({ loaded: false, result: '', timex: null }),
+  data: ()=> ({ frame: { element: null, ready: false, ref: null, src: '' }, preview: '', timex: null }),
   props: ['active','context','lock','mode'],
   template: `
     <div>
@@ -830,9 +791,9 @@ Vue.component('schema-text',{
         <span class="form-desc">Name of data variable set by schema element, if not element of array</span>
       </div>
       <div class="form-grid">
-        <label class="form-lbl">Default:</label>
-        <input class="form-input form-stretch" type="text" v-model="my.dflt" />
-        <span class="form-desc">Default value assigned to data variable set by schema element</span>
+        <label class="form-lbl">Value:</label>
+        <input class="form-input form-stretch" type="text" v-model="my.data" />
+        <span class="form-desc">Value assigned to data variable set by schema element</span>
       </div>
       <div class="form-grid">
         <label class="form-lbl">Flags:</label>
@@ -852,11 +813,6 @@ Vue.component('schema-text',{
         </span>
         <span class="form-desc">Auto generate output.</span>
       </div>
-<!--      <div class="form-grid" v-show="my.auto&&(my.auto!='none')">
-        <label class="form-lbl">Output:</label>
-        <input class="form-input" type="text" v-model="my.output" />
-        <span class="form-desc">Name of output variable set by generated content</span>
-      </div> -->
       </fieldset>
       <fieldset class="fieldset-element"><legend class="legend-element"> Constraints... </legend>
       <div class="form-grid">
@@ -888,18 +844,16 @@ Vue.component('schema-text',{
       </fieldset>
     </div>
     <div v-if="context=='data' && isVisible">
-      <fieldset class="fieldset-element"><legend class="legend-element"> {{ my.label+' ['+my.format.toUpperCase()+']'+(locked ? ' (LOCKED)' : '') }} </legend>
+      <fieldset class="fieldset-element">
+        <legend class="legend-element"> {{ my.label+' ['+my.format.toUpperCase()+']'+(locked ? ' (LOCKED)' : '') }} </legend>
         <div v-show="!my.hidden">
-        <span v-if="my.auto!==''" class="form-grid-alt">
-          <textarea v-if="my.block" :class="'form-input form-stretch form-ta-'+my.blocksize" v-model="my.src" :readonly="locked" @input="checkText"></textarea>
-          <input v-if="!my.block"type="text" class="form-input form-stretch" :disabled="locked" v-model="my.src" @input="checkText" />
-          <fieldset class="fieldset-element"><legend class="legend-element"> Generated Output... </legend>
-          <div class="md2html" ref="result" v-html="result"></div>
+        <span class="form-grid-alt">
+          <textarea v-if="my.block" :class="'form-input form-stretch form-ta-'+my.blocksize" v-model:value="my.data" :readonly="locked" @input="chkText"></textarea>
+          <input v-if="!my.block" type="text" class="form-input form-stretch" :disabled="locked" v-model:value="my.data" @input="chkText" />
+          <fieldset v-if="my.auto" class="fieldset-element"><legend class="legend-element"> Generated Output... </legend>
+          <iframe v-if="my.block" ref="aframe" :height="autoHeight" width="100%"></iframe>
+          <span v-if="!my.block" class="form-input form-stretch" v-html="preview"></span>
           </fieldset>
-        </span>
-        <span v-else class="form-grid-alt">
-          <textarea v-if="my.block" :class="'form-input form-stretch form-ta-'+my.blocksize" v-model="my.data" :readonly="locked" @input="checkText"></textarea>
-          <input v-if="!my.block" class="form-input form-stretch" type="text" :disabled="locked" v-model="my.data" @input="checkText" />
         </span>
         <span class="form-desc">{{ my.description }}</span>
         <e-notes :notes="my.notes" :context="context"></e-notes>
@@ -908,33 +862,57 @@ Vue.component('schema-text',{
       </fieldset>
     </div>
     </div>`,
+  created: function() { if (this.my.block&&this.my.auto) this.chkFrameReady(); if (this.my.auto) this.render(); },
   computed: {
+    autoHeight: function() { return ({ sm: '100px', med: '200px', lrg: '400px', xl: '800px' })[this.my.blocksize]||0; },
     isVisible: function () { return !this.active.child.hidden || (this.mode=='developer'); },
     locked: function() { return this.lock||this.active.child.readonly; },
-    my: function() {return this.active.child; },  // shorthand
+    my: function() { return this.active.child||{}; },  // shorthand
     re: function() { 
       if (!this.my.filter) return null;
       var [pat,flags] = this.my.filter.match(/\/(.*)\/([gimy])*$/).slice(1);
       return new RegExp(pat,flags);
-    },
+    }
   },
-  created: function() { this.result = this.my.data||''; },
-  updated: function() { console.log("text updated:",this.my.name); if (!this.loaded&&this.my.data) {this.loaded=true; this.debounce();} },
   methods: {
-    checkText: function(e) {
+    chkFrameReady: function() {
+      if (window.cfg&&window.cfg.autoTextFrame) {
+        if (!this.frame.src) this.frame.src = window.cfg.autoTextFrame.src;
+        if (this.$refs.aframe) this.frame.ref = this.$refs.aframe;
+        if (this.frame.ref) { 
+          if (!this.frame.ref.src) this.frame.ref.src = this.frame.src;
+          var doc = this.frame.ref.contentDocument || this.frame.ref.contentWindow.document;
+          var element = doc.getElementById(window.cfg.autoTextFrame.element);
+          if (element) {
+            this.frame.element = element;
+            this.frame.element.innerHTML = md2html.render(this.my.data||'');
+            return;
+          };
+        };
+      };
+      setTimeout(this.chkFrameReady,100);
+    },
+    chkText: function(e) {
       if (e.target.value && this.re) {  // filter value if it and regular expression defined
           var match = e.target.value.match(this.re);
-          e.target.value = (match!==null) ? match[0] : this.my.dflt;
+          e.target.value = (match!==null) ? match[0] : this.my.data;
       };
-      if (this.my.auto=='') {
-        this.my.data = (e.target.value!==null) ? e.target.value : this.my.dflt;  //update data field
-      } else {
-        this.my.src = (e.target.value!==null) ? e.target.value : this.my.dflt;  //update data field
-        this.debounce();
-      }
-      this.$emit('chg');  // debounce and notify change
+      this.my.data = (e.target.value!==null) ? e.target.value : this.my.data;  //update data field
+      this.debounce();
     },
-    debounce: function() { if (this.my.auto) { clearTimeout(this.timex); this.timex=setTimeout(()=>{this.my.data = md2html.render(this.my.src||'');this.result=this.my.data},1000); } }
+    debounce: function() { 
+      if (this.my.auto) { 
+        clearTimeout(this.timex); 
+        this.timex=setTimeout(this.render,1000);
+      };
+    },
+    render: function() {
+      if (this.my.block) {
+        if (this.frame.element) this.frame.element.innerHTML = md2html.render(this.my.data||'');
+      } else {
+        this.preview = md2html.render(this.my.data||'');
+      };
+    }
   }
 });
 
@@ -965,9 +943,9 @@ Vue.component('schema-date',{
         <span class="form-desc">Name of data variable set by schema element, if not element of array</span>
       </div>
       <div class="form-grid">
-        <label class="form-lbl">Default:</label>
-        <span class="form-input">{{ my.dflt }}</span>
-        <span class="form-desc">Default value assigned to data variable set by schema element</span>
+        <label class="form-lbl">Value:</label>
+        <span class="form-input">{{ my.data }}</span>
+        <span class="form-desc">Value assigned to data variable set by schema element</span>
       </div>
       <div class="form-grid">
         <label class="form-lbl">Flags:</label>
@@ -1009,7 +987,7 @@ Vue.component('schema-date',{
       </fieldset>
     </div>
     </div>`,
-  created: function() { if (!this.active.child.data) this.active.child.data = new Date().toISOString(); },
+  updated: function() { if (!this.active.child.data) this.active.child.data = new Date().toISOString(); },
   computed: {
     fields: function() { return new Date(this.active.child.data).style('form') },
     isVisible: function () { return !this.active.child.hidden || (this.mode=='developer'); },
@@ -1049,9 +1027,9 @@ Vue.component('schema-enumerated',{
         <span class="form-desc">Name of data variable set by schema element, if not element of array</span>
       </div>
       <div class="form-grid">
-        <label class="form-lbl">Default:</label>
-        <span class="form-input">{{ my.dflt }}</span>
-        <span class="form-desc">Default value assigned to data variable set by schema element</span>
+        <label class="form-lbl">Value:</label>
+        <span class="form-input">{{ my.data }}</span>
+        <span class="form-desc">Value assigned to data variable set by schema element</span>
       </div>
       <div class="form-grid">
         <label class="form-lbl">Flags:</label>
@@ -1121,7 +1099,6 @@ Vue.component('schema-enumerated',{
   },
   methods: {
     action: function(act,arg) {
-      ///console.log("action:", act, arg);
       switch (act) {
         case 'add': 
           if (this.newLabel) { 
@@ -1134,14 +1111,122 @@ Vue.component('schema-enumerated',{
       };     
     },
     change: function(e) {
-      console.log('input', {e: e, index:e.target.selectedIndex, value:e.target.value, selections:this.selections.asString(), refs:this.$refs});
       if (this.active.child.multiple) {
         this.active.child.data = this.active.child.choices.filter((e,i)=>this.selections.map(i=>i-1).includes(i));
       } else {
         this.active.child.data = [this.active.child.choices[e.target.selectedIndex-1]];
       };
-      console.log("data:",this.active.child.data);
       this.$emit('chg');
+    }
+  }
+});
+
+Vue.component('schema-link',{
+  props: ['active','context','lock','mode'],
+  template: `
+    <div>
+    <div v-if="context=='schema'">
+      <fieldset class="fieldset-element"><legend class="legend-element"> Hyperlink Element... </legend>
+      <div class="form-grid">
+        <label class="form-lbl">Element:</label>
+        <span class="form-input">link</span>
+        <span class="form-desc">Defines a hyperlink element with multiple output forms...</span>
+      </div>
+      <div class="form-grid">
+        <label class="form-lbl">Label:</label>
+        <input class="form-input" type="text" v-model="my.label" />
+        <span class="form-desc">Text displayed in schema view</span>
+      </div>
+      <div class="form-grid">
+        <label class="form-lbl">Description:</label>
+        <input class="form-input form-stretch" type="text" v-model="my.description" />
+        <span class="form-desc">Brief description of schema element</span>
+      </div>
+      <div class="form-grid">
+        <label class="form-lbl">Name:</label>
+        <input class="form-input" type="text" v-model="my.name" />
+        <span class="form-desc">Name of data variable set by schema element, if not element of array</span>
+      </div>
+      <fieldset class="fieldset-element"><legend class="legend-element"> Constraints... </legend>
+        <div class="form-grid">
+          <label class="form-lbl">Format:</label>
+          <span class="form-input">
+          <input type="radio" value="object" v-model="my.link.format" /> Javascript Object
+          <input type="radio" value="anchor" v-model="my.link.format"/> HTML Anchor
+          </span>
+          <span class="form-desc">Output data format</span>
+        </div>
+        <div class="form-grid">
+          <label class="form-lbl">Target:</label>
+          <span class="form-input">
+          <input type="checkbox" v-model="my.link.external" /> Blank Tab or Window
+          </span>
+          <span class="form-desc">Target an external blank tab or window when link opens</span>
+        </div>
+        <div class="form-grid">
+          <label class="form-lbl">Action:</label>
+          <span class="form-input">
+          <input type="radio" value="href" v-model="my.link.action" /> Hyperlink 'href'
+          <input type="radio" value="onclick" v-model="my.link.action"/> Hyperlink 'onclick'
+          </span>
+          <span class="form-desc">Defines property name used for link action</span>
+        </div>
+      </fieldset>
+      <div class="form-grid">
+        <label class="form-lbl">Flags:</label>
+        <span class="form-input">
+        <input type="checkbox" v-model="my.readonly" /> Read-only
+        <input type="checkbox" v-model="my.hidden"/> Hidden
+        </span>
+        <span class="form-desc"></span>
+      </div>
+      <e-notes :notes="my.notes" :context="context"></e-notes>
+      </fieldset>
+    </div>
+    <div v-if="context=='data' && isVisible">
+      <div v-show="!my.hidden">
+      <fieldset class="fieldset-element"><legend class="legend-element"> {{ my.label+(locked ? ' (LOCKED)' : '') }} </legend>
+      <div class="form-grid">
+        <label class="form-lbl">Text:</label>
+        <input ref="text" class="form-input form-stretch" type="text" v-model="my.link.text" @input="chgLink" />
+        <span class="form-desc">Text displayed as clickable link</span>
+      </div>
+      <div class="form-grid">
+        <label class="form-lbl">Image:</label>
+        <input ref="text" class="form-input form-stretch" type="text" v-model="my.link.image" @input="chgLink" />
+        <span class="form-desc">Image displayed as clickable link. (Text used as title attribute if output as anchor.)</span>
+      </div>
+      <div class="form-grid">
+        <label class="form-lbl">Link:</label>
+        <input ref="link" class="form-input form-stretch" type="text" v-model="my.link.link" @input="chgLink" />
+        <span class="form-desc">Hyperlink destination. Prefix with # for local link</span>
+      </div>
+      <div class="form-grid">
+        <label class="form-lbl">Data:</label>
+        <span class="form-input">{{ preview }}</span>
+        <span class="form-desc">Hyperlink output data</span>
+      </div>
+      <e-notes :notes="my.notes" :context="context"></e-notes>
+      </fieldset>
+      </div>
+      <p v-show="my.hidden" class="alert">Hidden element not avaiable for editing!</p>
+    </div>
+    </div>`,
+  computed: { 
+    isVisible: function () { return !this.active.child.hidden || (this.mode=='developer'); },
+    locked: function() { return this.lock||this.active.child.readonly; },
+    my: function() {return this.active.child; },  // shorthand
+    preview: function() { return typeof this.my.data=='object' ? (this.my.data||{}).asString() : this.my.data; }
+  },
+  methods: {
+    chgLink: function(e) {
+      let { action, external, format, image, link, text } = this.my.link;
+      if (format=='anchor') {
+        let img = (image) ? '<img src="'+image+'" alt="'+text+'" />' : null;
+        this.my.data = '<a href="'+(action=='href'?'':'" onclick="')+link+'"'+(external?' target="_blank"':'')+(img?' title="'+text+'"':'')+'>'+(img?img:text)+'</a>';
+      } else {
+        this.my.data = { image: image, link: link, target: external ? "_blank" : undefined, text: text};
+      };
     }
   }
 });
@@ -1160,8 +1245,8 @@ Vue.component('schema-container',{
       <div class="form-grid">
         <label class="form-lbl">Type:</label>
         <span class="form-input">
-          <input type="radio" name="type" value="object" :checked="!isArray" @change="chgType" /> Unordered (object)
-          <input type="radio" name="type" value="array" :checked="isArray" @change="chgType"/> Ordered (array)
+          <input type="radio" name="type" value="unordered" v-model="my.container" /> Unordered (object)
+          <input type="radio" name="type" value="ordered" v-model="my.container" /> Ordered (array)
         </span>
         <span class="form-desc">Specifies whether data renders as an object or array</span>
       </div>
@@ -1198,20 +1283,17 @@ Vue.component('schema-container',{
           <component v-for="child,i in my.children" :key="i" :is="'schema-'+child.element" :active="activeChild(i)" :context="context" :lock="locked" :mode="mode"
             @chg="$emit('chg')"></component>
         </div>
-        <history v-if="my.element=='schema'" :history="my.$history"></history>
         <p v-show="my.hidden" class="alert">Hidden element not avaiable for editing!</p>
       </fieldset>
     </div>
     </div>`,
   computed: {
-    isArray: function() { return (this.active.child.dflt instanceof Array); },
     isVisible: function () { return !this.active.child.hidden || (this.mode=='developer'); },
     locked: function() { return this.lock||this.active.child.readonly; },
     my: function() {return this.active.child; } // shorthand
   },
   methods: {
-    activeChild: function(i) { with(this.active) return {id:child.children[i].id, index:i, child: child.children[i], parent:child}; },
-    chgType: function(e) { this.active.child.dflt = schemaDefinitions.elements[e.target.value].dflt.copyByValue(); this.$emit('chg'); }
+    activeChild: function(i) { return this.$root.getHeritage([this.active.heir,i].join('.')); }
   }
 });
 

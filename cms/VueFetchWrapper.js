@@ -1,14 +1,14 @@
-// Plugin to add browser fetch function directly to Vue instance
+// Plugin to add browser fetch function directly to Vue instance -- ES5 compatible!
 // load after vue.js or vue.min.js library has been loaded so Vue exists!
 // to support older browsers preceed with call to
 // <script src="https://cdn.polyfill.io/v2/polyfill.min.js?features=fetch"></script>
 
-// optimized (simplified) for GET/PUT/POST of JSON data... i.e. all communications assumes JSON
-// wrapper 
-//   1.) makes a JS fetch, 
-//   2.) checks status and traps errors, 
-//   3.) recovers headers, (response.headers,headers) text (response.raw), and JSON (response.jx)
-//   4.) returns processed response Promise
+// optimized for GET/PUT/POST of JSON data... i.e. all communications assumes JSON wrapper 
+//   1.) Makes a JS fetch, 
+//   2.) Checks status and traps errors, 
+//   3.) Recovers headers (response.headers.headers), text (response.raw), and JSON (response.jx)
+//   4.) Includes response.jxOK flag to indicate JSON recovery status.
+//   5.) Returns processed response Promise
 
 var FetchWrapper = {
   install: function(Vue) {
@@ -26,7 +26,7 @@ var FetchWrapper = {
     // recover headers for convenience
     function recoverHeaders(response) {
       response.Headers = {};
-      response.headers.forEach((v,i)=>{response.Headers[i]=v});
+      response.headers.forEach(function(v,i) { response.Headers[i]=v; });
       if (response.options.verbose) console.info("fetch response Headers:",response.Headers);
       return response;
     };
@@ -35,15 +35,21 @@ var FetchWrapper = {
     function parse(response) {
       return new Promise(function(resolve){
         response.text() // returns a promise
-        .then(txt=>{ response.raw = txt; return response; })
+        .then(function(txt) { response.raw = txt; return response; })
         .then(function(res) {
           var jx={};
           res.jxOK = false;
-          try { jx=JSON.parse(res.raw); response.jx = jx; res.jxOK = !('error' in jx); } catch(e) { console.error("fetch parse:",e); }; 
+          try { 
+            jx=JSON.parse(res.raw); 
+            response.jx = jx; res.jxOK = !('error' in jx);
+          } catch(e) { 
+            if (res.options.verbose) console.error("fetch parse:",e);
+            res.jx = { error: {code:e.name, msg: e.asString()}, detail: res.raw };
+          }; 
           if (res.options.verbose) console.info("fetch parse[%s]: %s",res.jxOK,res.jx);
           resolve(res);
         })
-        .catch(e=>{}); // trap and ignore errors
+        .catch(function(e){}); // trap and ignore errors
       });
     };
 
@@ -95,12 +101,12 @@ var FetchWrapper = {
       // make request... and perform post process parsing...
 
       return fetch(url,options)
-        .then(res=>{ res.options=options; return res; }) // pass request options to response 
+        .then(function(res) { res.options=options; return res; }) // pass request options to response 
         .then(ckStatus) // check status and override request errors
         .then(recoverHeaders) // resolve headers promise for convenience
         .then(parse)  // parse JSON, with error checking
-        .then(res=>{ if(res.options.verbose) { console.log('fetch response[%s]:',res.url,res); }; return res; }) // optionally log response
-        .catch(e=>{console.error(e);}); // trap and ignore errors
+        .then(function(res) { if(res.options.verbose) { console.log('fetch response[%s]:',res.url,res); }; return res; }) // optionally log response
+        .catch(function(e) {console.error(e);}); // trap and ignore errors
     }
   }
 };

@@ -6,18 +6,26 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>HomebrewCMS</title>
-<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css"
-  integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous"> 
+<!-- <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css"
+  integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous"> --> 
+<!-- <script src="https://cdn.polyfill.io/v2/polyfill.min.js?features=fetch"></script> -->
+<!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.5.15/dist/vue.js"></script> -->
+<!-- https://cdnjs.cloudflare.com/ajax/libs/showdown/1.8.5/showdown.min.js -->
+<link href="https://fonts.googleapis.com/css?family=Poiret+One" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css?family=Anaheim" rel="stylesheet">
+<link rel="stylesheet" href="/cdn/font-awesome/v5.5.0/css/all.css">
 <link rel="stylesheet" href="cms.css">
 <script src="Extensions2Client.js"></script>
 <script src="/cdn/npm/vue@2.5.15/dist/vue.js"></script>
 <script src="/cdn/markdown-it/8.4.2/markdown-it.min.js"></script>
 <script src="/cdn/markdown-it/markdown-it-attrs.js"></script>
-<script src="/cdn/markdown-it/markdown-it-replace-link.js"></script>
+<script src="/cdn/markdown-it/markdown-it-link-plus.js"></script>
+<script src="/cdn/markdown-it/markdown-it-span.min.js"></script>
+<script src="/cdn/markdown-it/markdown-it-div.min.js"></script>
 <script src="VueFetchWrapper.js"></script>
 <script src="VueStorageWrapper.js"></script>
 <script src="cmsVueLib.js"></script>
-<script src="schema.js"></script>
+<script src="cfgAndSchemaDefs.js"></script>
 </head>
 
 <body>
@@ -28,23 +36,27 @@
 <span class="header-desc">JSON Content Management System</span>
 <form class="login">
   <i :class="'fas fa-'+((authenticated)?'un':'')+'lock auth-mode'"></i>
-  <label>User: <input type="text" v-model="user.name" @keyup.enter="login" />
-    <i class='far fa-share-square fa-rotate-180' @click="login"></i></label><br>
-  <label>Password: <input type="password" autocomplete="off" v-model="user.pw" @keyup.enter="login" />
-    <i class='far fa-share-square fa-rotate-180' @click="login"></i></label>
+  <label>User: </label>
+  <input type="text" autocapitalize="off" v-model="user.name" @keyup.enter="login" />
+  <i class='far fa-share-square fa-rotate-180' @click="login"></i><br>
+  <label>Password: </label>
+  <input type="password" autocomplete="off" v-model="user.pw" @keyup.enter="login" />
+  <i class='far fa-share-square fa-rotate-180' @click="login"></i>
 </form>
 </div>
 
 <div class="schema-tree">
 <cms-menu :menu="'schema'" :mode="mode" :option="treeExpand" @pick="menuDo"></cms-menu>
 <h3>Schema ...</h3>
-<div :class="'schema-tree-source'+((schema.id==active.id)?' schema-active':'')" @click="act({action:'touch'})">
+<!--<div :class="'schema-tree-source'+((schema.id==active.id)?' schema-active':'')" @click="act({action:'touch'})">-->
+<div :class="'schema-tree-source'+((active.heir=='*')?' schema-active':'')" @click="act({action:'touch'})">
   <p class="schema-label">{{ schema.label }} <span>[{{ schema.files.schema }}]</span></p>
   <p class="schema-desc">{{ schema.description }}</p>
 </div>
 <div class="schema-tree-elements">
   <span class="tooltip">Elements...<tip>Edit schema elements...</tip></span>
-  <schema-tree :highlight="active.id" :expand="treeExpand" :mode="mode" :parent="schema" @act="act"></schema-tree>
+  <!--<schema-tree :highlight="active.id" :expand="treeExpand" :mode="mode" :parent="schema" @act="act"></schema-tree>-->
+  <schema-tree :highlight="active.heir" :expand="treeExpand" :mode="mode" :parent="schema" @act="act"></schema-tree>
 </div>
 </div>
 
@@ -58,10 +70,7 @@
 </div>
 
 <div class="view" v-show="mngrView=='edit'">
-<cms-menu v-if="mode=='developer'" :context="context" :menu="'context'" :mode="mode" @pick="menuDo"></cms-menu>
-<h4>{{ context=='schema' ? 'Element' : 'Content (Data)' }} Definition...</h4>
-<schema-series v-if="context=='data'&&schema.id==active.id&&schema.series&&schema.series.enabled" :schema="schema" @act="act"></schema-series>
-<component :is="'schema-'+active.child.element" :active="active" :context="context" :mode="mode" @chg="debounce"></component>
+<component :is="'schema-'+active.child.element" :active="active" :context="context" :mode="mode" @act="act"></component>
 </div>
 
 <div class="view" v-show="mngrView=='help'">
@@ -75,7 +84,7 @@
 
 <div class="view" v-show="mngrView=='publish'">
 <h4>Publishing ...</h4>
-<mngr-publish :mode="mode" :sources="sources" :author="user.name" :version="schema.version" @act="act"></mngr-publish>
+<mngr-publish :sources="sources" :author="user.name" :version="schema.version" @act="act"></mngr-publish>
 </div>
 
 <div class="view" v-show="mngrView=='resources'">
@@ -87,7 +96,7 @@
 <cms-menu :context="context" :menu="'result'" :mode="mode" @pick="menuDo"></cms-menu>
 <h4 class="capitalize">Result {{ context }} Object...</h4>
 <pre class="json" v-if="context=='schema'" v-html="JSON.prettyHTML(schema,2)"></pre>
-<pre class="json" v-else v-html="JSON.prettyHTML(xdata,2)"></pre>
+<pre class="json" v-else v-html="JSON.prettyHTML(extractData(),2)"></pre>
 </div>
 
 <div class="view" v-show="mngrView=='user'">
