@@ -1,0 +1,20 @@
+{
+  "version": "20181105v0.1",
+  "authAs": "token",
+  "folders": {
+    "cms": "/cms",
+    "data": "/data",
+    "docs": "/cms",
+    "images": "/images",
+    "schema": "/schema",
+    "scripts": "/scripts",
+    "styles": "/styles"
+  },
+  "locations": {
+    "cms": "/",
+    "preview": "http://localhost",
+    "restricted": "../../restricted",
+    "live": "http://padre"
+  },
+  "pretty": true
+}

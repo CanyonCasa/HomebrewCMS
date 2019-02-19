@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+
+<html lang="en-US">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HomebrewCMS</title>
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css"
+  integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous"> 
+<link rel="stylesheet" href="cms.css">
+<script src="Extensions2Client.js"></script>
+<script src="/cdn/npm/vue@2.5.15/dist/vue.js"></script>
+<script src="/cdn/markdown-it/8.4.2/markdown-it.min.js"></script>
+<script src="/cdn/markdown-it/markdown-it-attrs.js"></script>
+<script src="/cdn/markdown-it/markdown-it-replace-link.js"></script>
+<script src="VueFetchWrapper.js"></script>
+<script src="VueStorageWrapper.js"></script>
+<script src="cmsVueLib.js"></script>
+<script src="schema.js"></script>
+</head>
+
+<body>
+<div id="app" class="content-grid-hidden">
+
+<div class="header">
+<h1>Homebrew CMS</h1>
+<span class="header-desc">JSON Content Management System</span>
+<form class="login">
+  <i :class="'fas fa-'+((authenticated)?'un':'')+'lock auth-mode'"></i>
+  <label>User: <input type="text" v-model="user.name" @keyup.enter="login" />
+    <i class='far fa-share-square fa-rotate-180' @click="login"></i></label><br>
+  <label>Password: <input type="password" autocomplete="off" v-model="user.pw" @keyup.enter="login" />
+    <i class='far fa-share-square fa-rotate-180' @click="login"></i></label>
+</form>
+</div>
+
+<div class="schema-tree">
+<cms-menu :menu="'schema'" :mode="mode" :option="treeExpand" @pick="menuDo"></cms-menu>
+<h3>Schema ...</h3>
+<div :class="'schema-tree-source'+((schema.id==active.id)?' schema-active':'')" @click="act({action:'touch'})">
+  <p class="schema-label">{{ schema.label }} <span>[{{ schema.files.schema }}]</span></p>
+  <p class="schema-desc">{{ schema.description }}</p>
+</div>
+<div class="schema-tree-elements">
+  <span class="tooltip">Elements...<tip>Edit schema elements...</tip></span>
+  <schema-tree :highlight="active.id" :expand="treeExpand" :mode="mode" :parent="schema" @act="act"></schema-tree>
+</div>
+</div>
+
+<div class="manager">
+<cms-menu :context="context" :menu="'manager'" :mode="mode" @pick="menuDo"></cms-menu>
+<h3 class="manager-header">Manager ...</h3>
+
+<div class="view" v-show="mngrView=='download'">
+<h4>Download ...</h4>
+<mngr-download :files="(lists.schema||{}).listing||[]" :folder="folders.schema" :sources="sources" @act="act"></mngr-download>
+</div>
+
+<div class="view" v-show="mngrView=='edit'">
+<cms-menu v-if="mode=='developer'" :context="context" :menu="'context'" :mode="mode" @pick="menuDo"></cms-menu>
+<h4>{{ context=='schema' ? 'Element' : 'Content (Data)' }} Definition...</h4>
+<schema-series v-if="context=='data'&&schema.id==active.id&&schema.series&&schema.series.enabled" :schema="schema" @act="act"></schema-series>
+<component :is="'schema-'+active.child.element" :active="active" :context="context" :mode="mode" @chg="debounce"></component>
+</div>
+
+<div class="view" v-show="mngrView=='help'">
+<h4>Help ...</h4>
+</div>
+
+<div class="view" v-show="mngrView=='log'">
+<h4>Log ...</h4>
+<scribe :msgs="msgs"></scribe>
+</div>
+
+<div class="view" v-show="mngrView=='publish'">
+<h4>Publishing ...</h4>
+<mngr-publish :mode="mode" :sources="sources" :author="user.name" :version="schema.version" @act="act"></mngr-publish>
+</div>
+
+<div class="view" v-show="mngrView=='resources'">
+<h4>Resources ...</h4>
+<mngr-resources :lists="lists" :folders="folders" @act="act"></mngr-resources>
+</div>
+
+<div class="view" v-show="mngrView=='result'">
+<cms-menu :context="context" :menu="'result'" :mode="mode" @pick="menuDo"></cms-menu>
+<h4 class="capitalize">Result {{ context }} Object...</h4>
+<pre class="json" v-if="context=='schema'" v-html="JSON.prettyHTML(schema,2)"></pre>
+<pre class="json" v-else v-html="JSON.prettyHTML(xdata,2)"></pre>
+</div>
+
+<div class="view" v-show="mngrView=='user'">
+<h4>User ...</h4>
+<mngr-users :user="user" @act="act"></mngr-users>
+</div>
+
+</div>
+
+<div class="footer">
+<span class="credits">
+  <span class="copyright">{{ schema.copyright }}</span>
+  <span class="git">HomebrewCMS</span>
+</span>
+</div>
+
+</div> <!-- id="app" -->
+
+<script src="cmsVueModel.js"></script>
+
+</body>
+
+</html>
