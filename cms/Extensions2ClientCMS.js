@@ -1,12 +1,10 @@
 ////////////////////////////////////////////////////////////////
-// Extensions to Client Side JavaScript ES5 compatible...
+// Extensions to Client Side JavaScript used by CMS
 ////////////////////////////////////////////////////////////////
 
 ///*************************************************************
 /// Array Object Extensions...
 ///*************************************************************
-// function to generate page base path add-on to location variable...
-if (!(Array.includes||Array.prototype.includes)) Array.prototype.includes =  function(element) { return (this.indexOf(element)!==-1); };
 
 
 ///*************************************************************
@@ -19,11 +17,9 @@ delete zone;
 
 // declare strings for days of the week and months of the year...
 if (!Date.prototype.days) Date.prototype.days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-if (!Date.prototype.months) Date.prototype.months = 
-  ["January","February","March","April","May","June","July","August","September","October","November","December"];
-
+if (!Date.prototype.months) Date.prototype.months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 // define a function for creating formated date strings
-// Date.prototype.style(<format_string>|'iso'|'form')
+// Date.prototype.style(<format_string>)
 //  formats a date according to specified string defined by ...
 //    'text':   quoted text preserved, as well as non-meta characters such as spaces
 //    Y:        4 digit year, i.e. 2016
@@ -55,12 +51,11 @@ if (!Date.prototype.months) Date.prototype.months =
 //    d.style();           // { Y: 2016, M: 12, D: 7, h: 21, m: 22, s: 11, x: 262, SM: 'December', SD: 'Wednesday', a: 'PM', e: 1481145731.262, z: 'MST', N: 3, LY: true, dst: false }
 //    d.style().e;         // 1481145731.262
 //    d.style("MM/DD/YY"); // '12/07/16'
-
 if (!Date.prototype.style)
-  Date.prototype.style = function(frmt,local) {
+  Date.prototype.style = function(frmt='',local=false) {
     var dx = (local||frmt=='form') ? new Date(this-this.getTimezoneOffset()*60*1000) : this;
     base = dx.toISOString();
-    switch (frmt||'') {
+    switch (frmt) {
       case 'form': return base.split(/[TZ\.]/i).slice(0,2); break;  // values for form inputs, always local
       case 'iso': return (local) ? base.replace(/z/i,dx.zone) : base; break; // ISO Zulu time or localtime
       case '':  // object of date field values
@@ -71,9 +66,9 @@ if (!Date.prototype.style)
           dst: !!(new Date(1970,1,1).getTimezoneOffset()-dx.getTimezoneOffset())}; break;
       default:
         var flags = dx.style(); flags['YYYY'] = flags.Y; flags['hh'] = flags['h']; if (flags['h']>12) flags['h'] %= 12;
-        var token = /Y(?:YYY|Y)?|S[MD]|0?([MDNhms])\1?|[aexz]|"[^"]*"|'[^']*'/g;
-        var pad = function(s) { return ('0'+s).slice(-2) };
-        return (frmt).replace(token, function($0) { return $0 in flags ? flags[$0] : ($0.slice(1) in flags ? pad(flags[$0.slice(1)]) : $0.slice(1,$0.length-1)); });
+        var token = /Y(?:YYY|Y)?|0?[MDNhms]{1,2}|[aexz]|S[MD]|"[^"]*"|'[^']*'/g;
+        var pad = s => ('0'+s).slice(-2);
+        return frmt.replace(token, $0 => $0 in flags ? flags[$0] : ($0.slice(1) in flags ? pad(flags[$0.slice(1)]) : $0.slice(1,$0.length-1)) );
     };
   };
 
@@ -84,23 +79,22 @@ if (!Date.prototype.style)
 // following done as non-enumerable definitions to not break "for in" loops
 // make object keys iterable to work in for-of-loops like arrays
 Object.prototype[Symbol.iterator] = function () {
-  var keys = Object.keys(this); var index = 0; 
-  return { next: function() { return index<keys.length ? {value: keys[index++], done: false} : {done: true}; } }
+  var keys = Object.keys(this); var index = 0;
+  return { next: () => index<keys.length ? {value: keys[index++], done: false} : {done: true} };
 };
 
 // test to differentiate objects and arrays
 if (!Object.isObj) Object.defineProperty(Object,'isObj', {
-  value: function(obj,excludeNull) { return (excludeNull && (obj===null)) ? false : ((typeof obj==='object') && !(obj instanceof Array)); },
+  value: (obj) => (typeof obj==='object' && !(obj instanceof Array)),
   enumerable: false
 });
 
 // recursively merge keys of an ojbect into an existing objects with merged object having precedence
 if (!Object.mergekeys) Object.defineProperty(Object.prototype,'mergekeys', {
   value: 
-    function(merged) {
-      merged = merged || {};
+    function(merged={}) {
       for (var key in merged) { 
-        if (Object.isObj(merged[key],true) && Object.isObj(this[key],true)) {
+        if (Object.isObj(merged[key]) && Object.isObj(this[key])) {
           this[key].mergekeys(merged[key]); // both objects so recursively merge keys
         }
         else {
@@ -117,10 +111,10 @@ if (!Object.asString) Object.defineProperty(Object.prototype,'asString', {
   value: 
     function(max) {
       var str = this instanceof Array ? '[ ' : '{ ';
-      var qs = function(s) { return "'" + s.replace(/'/g,"\\'") + "'"; };
-      var qk = function(k) { return k.includes(' ') ? "'" + k + "'" : k };
-      var is = function(v,t) {return typeof v==t; };
-      var asStr = function(v) { return v===null||v===undefined||is(v,'number')||is(v,'boolean') ? String(v) : (is(v,'object') ? v.asString() : (is(v,'string') ? qs(v) : '?')); };
+      var qs = (s) => "'" + s.replace(/'/g,"\\'") + "'";
+      var qk = (k) => k.includes(' ') ? "'" + k + "'" : k;
+      var is = (v,t) => typeof v==t;
+      var asStr = (v) => v===null||v===undefined||is(v,'number')||is(v,'boolean') ? String(v) : (is(v,'object') ? v.asString() : (is(v,'string') ? qs(v) : '?'));
       for (var key in this) str += (this instanceof Array ? '' : qk(key) + ': ') + asStr(this[key]) + ', ';
       str = (str.endsWith(', ') ? str.slice(0,-2)+' ' : str) + (this instanceof Array ? ']' : '}');
       return max ? str.slice(0,max-3)+'...' : str;
@@ -156,10 +150,10 @@ if ((typeof location!=='undefined')&&!location.base)
   location.base = location.origin + location.pathname.replace('/'+location.pathname.split('/').pop(),'');
 
 // function to create and populate an array of given size and values, note value can even be a function
-if (!makeArrayOf) function makeArrayOf(size,value) { return Array.apply(null, Array(size)).map(function(v,i,a){ return (typeof value=='function') ? value(v,i,a) : value }); };
+if (!makeArrayOf) function makeArrayOf(size,value) { return Array.apply(null, Array(size)).map(typeof value=='function' ? value : (()=>value)); };
 
 // function to correctly join an array of path parts into a valid path...
-if (!makePath) function makePath() { return Array.from(arguments).join('/').replace(/\/{2,}/g,'/').replace(/:\//,'://'); };
+if (!makePath) function makePath(...args) { return args.join('/').replace(/\/{2,}/g,'/').replace(/:\//,'://'); };
 
 // formats JSON as HTML for pretty printing in color... 
 //   requires css class definitions for colors: .json (wrap everything), .json-key, .json-value, .json-string, .json-boolean
@@ -167,14 +161,10 @@ if (!makePath) function makePath() { return Array.from(arguments).join('/').repl
 //   fixed problems: spaces in keys, empty objects, changed quoted strings styling, added boolean styling
 //   https://blog.centerkey.com/2013/05/javascript-colorized-pretty-print-json.html
 if (!JSON.prettyHTML) Object.defineProperty(JSON,'prettyHTML',{
-  value: function(obj,spaces) {
-    spaces = spaces || 1;
+  value: function(obj,spaces=1) {
     var pattern = /^( *)("[$\w ]+":)? ?("[^"]*"|[\w.+-]*)?([,[{}\]]+)?$/mg;
     function replacer(match, indent, key, val, term) {
-      var tag = function(style,content,quote) { 
-        quote = quote || '';
-        return quote+"<span class='json-"+style+"'>"+content+'</span>'+quote; 
-      };
+      var tag = (style,content,quote='') => quote+"<span class='json-"+style+"'>"+content+'</span>'+quote;
       var line = indent || '';  // build the line piecewise from wrapped fields
       line += (key) ? tag('key',key.replace(/[":]/g, '')) + ': ' : '';
       line += (val) ? (val.startsWith('"') ? tag('string',val.replace(/"/g, ''),'"') : ((val=='false'||val=='true') ? tag('boolean',val) : tag('value',val))) : '';
@@ -189,10 +179,10 @@ if (!JSON.prettyHTML) Object.defineProperty(JSON,'prettyHTML',{
 });
 
 // generates an 8 character unique ID ...
-if (!uniqueID) var uniqueID = function() {return Math.random().toString(36).substr(2,8); };
+if (!uniqueID) var uniqueID = ()=> Math.random().toString(36).substr(2,8);
 
 // bounds a value between min and max or returns dflt or 0...
-if (!bound) var bound = function(min,val,max,dflt) {
+if (!bound) var bound = (min,val,max,dflt) => {
   val = Number(isNaN(val) ? (isNaN(dflt) ? 0 : dflt ) : val);
   if (min!==null&&!isNaN(min)) val = (val<min) ? Number(min) : val;
   if (max!==null&&!isNaN(max)) val = (val>max) ? Number(max) : val;

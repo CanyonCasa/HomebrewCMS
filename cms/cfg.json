@@ -1,0 +1,14 @@
+{
+  "locations": {
+    "cms": "/",
+    "domain": "http://live",
+    "preview": "http://preview",
+    "restricted": "../../../restricted",
+    "live": "http://live"
+  },
+  "pretty": true,
+  "series": {
+    "copyright": "&copy; 2019 Saranam LLC"
+  },
+  "session": 86400
+}

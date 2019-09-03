@@ -45,14 +45,15 @@ var vm = new Vue({
       switch (msg.action) {
         case 'add': this.addElement(msg.parent,msg.element); break;   // add element to schema parent
         case 'clip': this.clipboard('copy',msg.text); break;          // copy context-specific result to clipboard as JSON object
-        case 'copy': this.copyElement(msg.evt); break;                // copies active element at place or to clipboard (CTRL), or from clipboard (ALT)
-        case 'delete': this.deleteElement(msg.evt); break;            // delete element if CTRL-CLICK, i.e. mouse event paased to detect ctrl key
+        case 'copy': this.copyElement(msg.evt); break;                // copies active element at place or to (CTRL) or from (ALT) clipboard
+        case 'delete': this.deleteElement(msg.evt); break;            // delete element if CTRL-CLICK, i.e. event passed to detect ctrl key
+        case 'download': this.loadSchema(msg.schema); break;          // download schema: schema cloud reference
         case 'list': this.listFolders(msg.src); break;                // list schema, docs, and images files at source
-        case 'loadSchema': this.loadSchema(msg.schema); break;        // load schema: file, schema cloud reference
         case 'move': this.moveElement(msg.direction); break;          // move active element within the schema tree per direction
         case 'publish': this.publish(msg.dest,msg.args); break;       // publish schema and/or data to preview or live site
-        case 'series': this.chgSeries(msg.option); break;             // Change to or from a series post
-        case 'touch': this.touch(msg.heritage); break;                // highlight child of parent specified by index, where parent and index are null for top level schema
+        case 'serial': this.chgSeries(msg.data); break;               // Change to or from a series post
+        case 'series': this.setData(this.schema,msg.data); break;     // load the schema with the given series data
+        case 'touch': this.touch(msg.heritage); break;                // highlight heir/ancestor
         case 'upload': this.upload(msg.file); break;                  // upload file record
         default: 
           scribe.warn("act: unknown? -> ",msg);
@@ -126,17 +127,17 @@ var vm = new Vue({
         this.touch('*');  // set schema as active element
       };
     },
-    extractData: function(child){ // returns current schema data
+    extractData: function(child,raw=false){ // returns current schema data
       if (child===undefined) child = this.schema;
       if (child.container) {
         let tmp = (child.container=='ordered') ? [] : {};
         for (let i in child.children) {
           let index = (child.container=='ordered') ? i : child.children[i].name;
-          tmp[index] = this.extractData(child.children[i]);
+          tmp[index] = this.extractData(child.children[i],raw);
         };
         return tmp;
       } else {
-        return child.auto ? md2html(child.data,!child.block&&child.strip) : child.data;  // presently only supports MD->HTML
+        return !raw&&child.auto ? md2html(child.data,!child.block&&child.strip) : child.data;  // presently only supports MD->HTML
       };
     },
     getHeritage: function(heritage='*') {
@@ -195,25 +196,9 @@ var vm = new Vue({
           .catch(e=>{scribe.error(e);});
       });
     },
-    loadSeriesData: function(file) {
-      var spec = makePath(this.sources[this.sources.active],cfg.folders.data,this.schema.files.store,file);
-      scribe.log("load series data:",spec);
-      var rqst = {
-        body: { file: { name: this.schema.files.store+'/'+file, folder: 'data' } },
-        method: 'POST',
-        url: this.sources[this.sources.active] + cfg.locations.cms + '@download',
-        verbose: debug
-      };
-      this.load(rqst)
-        .then(res => { 
-          if (res.jxOK&&('contents' in res.jx)) {
-            this.setData(this.schema,res.jx.contents);
-            scribe.log('Series data set!'); 
-          }; })
-        .catch(e=>{scribe.error(e);});
-    },
     loadSchema: function(schema) {
       if (typeof schema=='string') {  // location.hash given so convert to object, assuming live source
+	    schema = schema.replace('-','/');	// fix subfolder delimiter passed as - character
         schema = {src:'live',store:schema.substr(1,schema.lastIndexOf('/')-1),file:schema.substr(schema.includes('/')?schema.lastIndexOf('/')+1:1)+'.json' }
         schema.spec = makePath(this.sources[schema.src],cfg.folders.schema,schema.store,schema.file);
       };
@@ -225,12 +210,15 @@ var vm = new Vue({
         url: this.sources[schema.src] + cfg.locations.cms+'@download',
         verbose: debug
       };
-      this.load(rqst)
+      var self = this;
+      self.load(rqst)
         .then(res=>{ 
           if (res.jxOK&&('contents' in res.jx)) {
-            this.schema = {};
-            for (let key in res.jx.contents) Vue.set(this.schema,key,res.jx.contents[key]);
-            this.touch('*');
+            let refreshedSchema = schemaDefinitions.newSchema.copyByValue();
+            if ('series' in (res.jx.contents||{})) refreshedSchema.series = schemaDefinitions.series.copyByValue();
+            let save = refreshedSchema.copyByValue()
+            self.schema = refreshedSchema.mergekeys(self.updateSchemaElements(res.jx.contents));
+            self.touch('*');
             return res;
           };
         })
@@ -337,6 +325,7 @@ var vm = new Vue({
         };
     },
     publish: function(dest, args) {
+      var addKWs = (src,kwStr,i) => { (kwStr||'').split(',').map(kw=>kw.trim()).forEach(kw=>(kw in src)?src[kw].push(i):src[kw]=[i]); return src; };
       scribe.log(dest=="live" ? "publish" : "preview",this.schema.series ? "[series]":"",": ",args.asString());
       // build file records, include history for live destination
       let files=[]; let bakExt='.' + this.schema.version + '.bak';
@@ -344,50 +333,55 @@ var vm = new Vue({
         this.schema.version = args.history.version;
         this.schema.history.push(args.history);
       };
-      let sdata = this.schema.copyByValue();  // schema data
-      let xdata = this.extractData();         // current data for normal post or series post 
-      let idata = { $index:[] };              // index data;
-      console.log("sdata:",sdata);
-      console.log("sdata.series:",sdata.series);
-      console.log("xdata:",xdata);
-      console.log("idata:",idata);
+      let sdata = this.schema.copyByValue();            // schema data
+      let xdata = this.extractData();                   // current data for normal post or series post
+      let idata = Object.assign({},xdata,{$index:[],$keywords:{}});  // index data;
+      let elData = {};                                  // series element data only
       if (sdata.series) { // define post data, update meta data and build an index
+        let rxdata = this.extractData(undefined,true);  // raw data for series data
         sdata.series.meta.dtd = new Date().style('iso');
-        if (sdata.series.active===null) { // editting a new post, update filename
-          let dtd = new Date(sdata.series.meta.dtd).style(cfg.series.dformat||'YYYYMMDDThhmm'); 
-          let pstr = '00000000' + (1+sdata.series.data.length);
-          sdata.series.meta.file = sdata.files.series.replace(/\$([udp$])(\d)?/ig,(m,x,n)=> x=='$'?'$':x=='u'?this.user.name:x=='d'?dtd:x=='p'?pstr.substr(-n||-3):'?');
+        let dtd = new Date(sdata.series.meta.dtd).style(cfg.series.dformat||'YYYYMMDDThhmm');
+        let pstr = '00000000' + (1 + (sdata.series.active===null ? sdata.series.data.length:sdata.series.active));
+        // file pattern --> d:date, p:post, u:user, v: version, $:$
+        sdata.series.meta.file = makePath(this.schema.files.store,sdata.files.series.replace(/\$([dpu$])(\d+)?/ig,(m,x,n)=> 
+          x=='$'?'$':x=='u'?this.user.name:x=='d'?dtd:x=='p'?pstr.substr(-(n||4)):'?'));
+       // build the index...
+        // index of prior posts and keywords table for live
+        if (dest=='live') sdata.series.data.forEach((p,i)=>{idata.$index.push({$meta:p.$meta, $data:null}); addKWs(idata.$keywords,p.$meta.keywords,i)});
+        // add current post (new or old) to end of index and keywords table, with data for series element
+        elData[sdata.series.meta.element] = xdata[sdata.series.meta.element];
+        idata.$index.push({$meta: sdata.series.meta, $data:elData });
+        addKWs(idata.$keywords,sdata.series.meta.keywords,idata.$index.length-1);
+        if (sdata.series.active!==null) { // update old series data for edits
+          sdata.series.data.splice(sdata.series.active,1,{$meta: sdata.series.meta, $data:rxdata});
+        } else { // add raw schema data & meta data to schema series data if publishing live new post
+          if (dest=='live') sdata.series.data.push({$meta: sdata.series.meta, $data:rxdata});
         };
-        // build the index form new
-        if (dest=='live') sdata.series.data.forEach(p=>idata.$index.push({$meta:p.$meta, $data:null}));  // index of prior posts if publishing live
-        idata.$index.push({$meta: sdata.series.meta, $data:xdata});  // always add current post (new or old) to end of index, with data
-        if (dest=='live') sdata.series.data.push({$meta: sdata.series.meta, $data:xdata}); // add data & meta data to schema series data log if publishing
       };
-      console.log("*xdata:",xdata);
-      console.log("*idata:",idata);
-      console.log("*sdata:",sdata);
-      // schema file...
+      // prep schema file...
       let spec = makePath(this.schema.files.store,this.schema.files.schema);
       let backupSpec = (args.backup) ? spec.replace('.json',bakExt) : '';
       files.push({ backup: backupSpec, contents: sdata, folder: 'schema', name: spec });
-      // data file...
+      // prep data file...
       spec = makePath(this.schema.files.store,this.schema.files.data);
       backupSpec = (args.backup) ? spec.replace('.json',bakExt) : '';
       files.push({ backup: backupSpec, contents:  sdata.series?idata:xdata, folder: 'data', name: spec });
-      // series file...
+      // prep series file...
       if (this.schema.series&&dest=='live') {
-        spec = makePath(this.schema.files.store,sdata.series.meta.file);
+        spec = sdata.series.meta.file;
         backupSpec = (args.backup) ? spec.replace('.json',bakExt) : '';
-        files.push({ backup: backupSpec, contents: xdata, folder: 'data', name: spec });
+        files.push({ backup: backupSpec, contents: {data:elData,meta:sdata.series.meta}, folder: 'data', name: spec });
       };
-      console.log(dest=="live" ? "publish files:" : "preview files:",files);
+      files.forEach(f=>{ console.log(f.name+':',f.contents); });
       // publish to live site if specified
       if (dest=='live'){
         this.load({url:cfg.locations['live']+cfg.locations.cms+'@upload', method:'POST', body:{files: files},verbose:debug})
           .then(res=>{ scribe.info(res.jxOK ? res.jx : res.raw); })
           .catch(e=>{scribe.error(e)});
-        this.schema.series.data = sdata.series.data;  // backfill series data
-        this.schema.series.active = sdata.series.data.length-1;
+        if (this.schema.series) {
+          this.schema.series.data = sdata.series.data;  // backfill series data
+          this.schema.series.active = sdata.series.data.length-1;
+        };
       };
       // always publish to preview site
       this.load({url:cfg.locations['preview']+cfg.locations.cms+'@upload', method:'POST', body:{files: files},verbose:debug})
@@ -408,7 +402,7 @@ var vm = new Vue({
         error: function(...args) { postIt('error',...args); console.error(...args); },
       };
     },
-    setData: function(child,data){  // call with no no data to clear current schema data
+    setData: function(child,data){  // call with no data to clear current schema data
       if (child===undefined) child = this.schema;
       if (child.container) {
         for (let i in child.children) {
@@ -416,13 +410,33 @@ var vm = new Vue({
           this.setData(child.children[i],cdata);
         };
       } else {
-        child.data = (data!==undefined) ? data : schemaDefinitions[child.element].data;
+        child.data = (data!==undefined) ? data : schemaDefinitions.elements[child.element].data;
       };
     },
     touch: function(heritage) {
       this.active = this.getHeritage(heritage);
       this.mngrView = 'edit'; // automatically show edit window if element touched
       this.context = (this.active.index!==null) ? this.context : 'data';  // switch to data root schema touched
+    },
+    updateSchemaElements: function(src) { // updates schema with any definition changes and new defaults
+      let s = {};
+      for (let key in src) {
+        if (key=="children") {
+          let c = [];
+          for (let child in src[key]) {
+            let el = src[key][child].element;
+            if (el=='container') {
+              c.push(this.updateSchemaElements(src[key][child]));              
+            } else {
+              c.push(Object.assign({},schemaDefinitions.elements[el],src[key][child]));
+            };
+          };
+          s[key] = c;
+        } else {
+          s[key] = src[key];
+        };
+      };
+      return s;
     },
     upload: function(file) {
       scribe.log("upload: ",file.name);
@@ -440,7 +454,7 @@ var vm = new Vue({
 
 var scribe = vm.scribeObj();
 
-var md = window.markdownit('commonmark').use(markdownItAttrs).use(markdownitLinkPlus).use(markdownitDiv);
+var md = window.markdownit('commonmark').use(markdownItAttrs).use(markdownitLinkPlus).use(markdownitSpan);
 var md2html = function(content,strip=false) {
   let rendered = md.render(content);
   return strip ? rendered.replace(/^<p>|<\/p>(?:\n)?$/gm,'') : rendered;

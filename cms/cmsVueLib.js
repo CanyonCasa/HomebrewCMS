@@ -127,26 +127,32 @@ Vue.component('f-tree',{
 });
 
 Vue.component('f-tree-plus',{
-  props: ['filter','flist','store'],
+  data: () => ({ delay:500, timer:null }),
+  props: ['flist','pattern','store'],
   template: `
     <div class="f-tree">
-      <span v-for="f,i in flist.filter(f=>isDir(f)||fOK(f,filter))">
-        <span class="f-tree-grid">
-        <span class="f-tree-file"><i :class="icon(f)"></i><span v-if="!isDir(f)" @click.stop="touch(f)">{{ f.name }}</span><span v-else>{{ f.name + ' FOLDER' }}</span></span>
-        <span v-if="!isDir(f)" class="f-tree-size">{{ inKB(f.size) }}</span>
-        <span v-if="!isDir(f)" class="f-tree-date">{{ dtd(f.date) }}</span>
+      <span v-for="[file,isDir] in flist.filter(f=>fOK(f,pattern)).map(f=>[f,'listing' in f])">
+        <span class="f-tree-grid" v-if="isDir">
+          <span class="f-tree-file f-tree-file-dir"><i :class="icon(isDir)"></i> [{{ file.name }}]</span>
         </span>
-        <span v-if="isDir(f)"><f-tree-plus class="f-tree-indent" :filter="filter" :flist="f.listing" :store="store+'/'+f.name" @act="act"></f-tree-plus></span>
+        <f-tree-plus v-if="isDir" class="f-tree-indent" :pattern="pattern" :flist="file.listing" :store="store+'/'+file.name" @act="act"></f-tree-plus>
+        <span class="f-tree-grid" v-if="!isDir">
+          <span v-if="!isDir" class="f-tree-file" @dblclick.stop="touch(file,true)" @click.stop="touch(file)"><i :class="icon(isDir)"></i> {{ file.name }}</span>
+          <span class="f-tree-size">{{ inKB(file.size) }}</span>
+          <span class="f-tree-date">{{ dtd(file.date) }}</span>
+        </span>
       </span>
     </div>`,
   methods: {
     act: function(msg) { this.$emit('act',msg); },
     dtd: (d) => new Date(d*1000).style('Y-0M-D h:m:s a z','local'),
-    fOK: (f,fltr) => !('listing' in f) && f.name.endsWith(fltr),
-    icon: (f) => 'far ' + ('listing' in f ? 'fa-folder-open' : 'fa-file-alt') + ' fa-fw f-tree-icon',
+    fOK: (f,p) => ('listing' in f) || f.name.endsWith(p),
+    icon: (d) => 'far ' + (d ? 'fa-folder-open' : 'fa-file-alt') + ' fa-fw f-tree-icon',
     inKB: (s) => (s/1024).toFixed(0) + 'KB',
-    isDir: (f) => 'listing' in f,
-    touch: function(f) { this.$emit('act',{action: 'pick', file:f, store: this.store}); }
+    touch: function(f,dbl) {
+      if (dbl==undefined) { this.timer=this.timer||setTimeout(this.touch,this.delay,f,false); return; } else { this.timer=clearTimeout(this.timer) };
+      this.$emit('act',{action: 'pick', file: f, store: this.store, open:!!dbl}); 
+    }
   }
 });
 
@@ -157,6 +163,7 @@ Vue.component('history',{
     <fieldset class="fieldset-element"><legend class="legend-element"> History... </legend>
       <div class="history-grid" v-for="h in history.slice().reverse()">
       <span class="history-dtd">{{ h.dtd }}</span>
+      <span class="history-version">{{ h.version||'' }}</span>
       <span class="history-author">{{ h.author }}</span>
       <span class="history-note">{{ h.note }}</span>
       </div>
@@ -191,7 +198,7 @@ Vue.component('mngr-download',{
     </div>
     <div class="form-grid">
       <label class="form-lbl">Schema:</label>
-      <f-tree-plus class="form-input" :flist="files" :filter="backup?'':'.json'" :store="''" @act="pick"></f-tree-plus>
+      <f-tree-plus class="form-input" :flist="files" :pattern="backup?'':'.json'" :store="''" @act="pick"></f-tree-plus>
       <span class="form-desc">Pick schema from list...</span>
     </div>
     <div class="form-grid">
@@ -206,10 +213,17 @@ Vue.component('mngr-download',{
     </div>`,
   methods: {
     chgSrc: function(e) { this.cloud = {src:e.target.value,file:'',store:''}; this.list(); },
-    download: function() { this.$emit('act',{action:'loadSchema',schema:this.cloud}); },
+    download: function() { this.$emit('act',{action:'download',schema:this.cloud}); },
     list: function() { this.$emit('act',{action:'list',src:this.cloud.src}); },
-    pick: function(selected) {this.cloud = { src:this.cloud.src,folder:this.folder,file:selected.file.name,store:selected.store.substr(1),
-      spec: makePath(this.sources[this.cloud.src],this.folder,selected.store.substr(1),selected.file.name)}; }
+    pick: function(selected) {
+      this.cloud = { 
+        src:this.cloud.src,
+        folder:this.folder,file:selected.file.name,
+        store:selected.store.substr(1),
+        spec: makePath(this.sources[this.cloud.src],this.folder,selected.store.substr(1),selected.file.name)
+      };
+      if (selected.open) this.download();
+    }
   }
 });
 
@@ -252,7 +266,7 @@ Vue.component('mngr-resources',{
       <label class="form-lbl">Links:</label>
       <span class="form-desc">
         REFERENCE: <span class="text-black">{{ links.ref }}</span> <i class="fas fa-copy fa-fw tooltip" 
-          @click="action('clip',links.html)"><tip>copy to clipboard</tip></i><br>
+          @click="action('clip',links.ref)"><tip>copy to clipboard</tip></i><br>
         Markdown(MD): <span class="text-black">{{ links.mark }}</span> <i class="fas fa-copy fa-fw tooltip" 
           @click="action('clip',links.mark)"><tip>copy to clipboard</tip></i><br>
         RAW HTML: <span class="text-black">{{ links.html }}</span> <i class="fas fa-copy fa-fw tooltip" 
@@ -266,7 +280,7 @@ Vue.component('mngr-resources',{
     </div>
     <div class="form-grid">
       <label class="form-lbl">Existing:<br>({{type}})</label>
-      <f-tree-plus class="form-input" :flist="flist" :filter="''" :store="''" @act="pick"></f-tree-plus>
+      <f-tree-plus class="form-input" :flist="flist" :pattern="''" :store="''" @act="pick"></f-tree-plus>
       <span class="form-desc">Existing files. Check list to avoid overriding existing files.</span>
     </div>
     </div>`,
@@ -419,7 +433,7 @@ Vue.component('mngr-users',{
 });
 
 Vue.component('schema-info',{
-  data: () => ({ series: false, trackSchema: true }),
+  data: () => ({ serial: false, trackSchema: true }),
   props: ['info'],
   template: `
     <div class="schema-info">
@@ -465,37 +479,46 @@ Vue.component('schema-info',{
     <legend class="legend-element"> Series Propeties... </legend>
     <div class="form-grid">
       <label class="form-lbl">Series:</label>
-      <span class="form-input"><input type="checkbox" ref="series" v-model:value="series" @input="(e)=>$emit('act','series',e.target.checked)" /> Sequential Data Files Mode</span>
+      <span class="form-input"><input type="checkbox" v-model:value="serial" @input="act" /> Serial Mode</span>
       <span class="form-desc">Specifies whether page data renders as sequential data files (i.e. blog, newsfeed, ...)</span>
     </div>
-    <div v-if="series" class="form-grid">
-      <label class="form-lbl">Series Template:</label>
-      <input class="form-input" type="text" v-model="info.series.template" />
-      <span class="form-desc"><span v-if="series" class="text-white text-bold">REQUIRED! Defines the Vue component template used to render the series files</span></span>
+    <div v-if="serial" class="form-grid">
+      <label class="form-lbl">Template:</label>
+      <input class="form-input" type="text" v-model="meta.template" />
+      <span class="form-desc text-bold">REQUIRED! Defines the Vue component template used to render the series files</span>
     </div>
-    <div v-if="series" class="form-grid">
-      <label class="form-lbl">Series File:</label>
-      <span class="form-input">
-        <input type="text" v-model="info.files.series" />
-      </span>
+    <div v-if="serial" class="form-grid">
+      <label class="form-lbl">Element:</label>
+      <input class="form-input" type="text" v-model="meta.element" />
+      <span class="form-desc text-bold">REQUIRED! Defines the data element included in the series files</span>
+    </div>
+    <div v-if="serial" class="form-grid">
+      <label class="form-lbl">Filespec:</label>
+      <input class="form-input" type="text" v-model="info.files.series" />
       <span class="form-desc">Filename template for serial posts</span>
     </div>
+    <div v-if="serial" class="form-grid">
+      <label class="form-lbl">Categories:</label>
+      <input class="form-input form-stretch" type="text" v-model="series.categories" />
+      <span class="form-desc">Display group filter for serial posts. Comma separated list of categories.</span>
+    </div>
     </fieldset><br>
-<!--    <div class="form-grid">
-      <button class="form-input" @click="$emit('act','regen')">Regenerate Unique IDs</button>
-      <span class="form-desc">Regenerates the schema and child ID's to ensure uniqueness.</span>
-    </div>-->
-    <p class="alert">NOTE: Schema information only saved when schema published.</p>
+    <p class="alert">NOTE: Schema information only saved when schema published!</p>
     </fieldset>
     </div>`,
-  created: function() { this.series = !!this.info.series; },
+  computed: {
+    meta: function() { return this.series.meta||{}; },
+    series: function() { return this.info.series||{}; }
+  },
+  created: function() { this.serial = !!this.info.series; },
   methods: {
+    act: function(e) { this.$emit('act','serial',e.target.checked); },
     track: function(e) { if (this.trackSchema) Vue.set(this.info.files,'data',e.target.value); }
   }
 });
 
 Vue.component('schema-series',{
-  data: () => ({ action:'new', index:null, view:false }),
+  data: () => ({ action:'new', checkedCategories: [], index:null, viewPosts:false }),
   props: ['mode','series'],
   template: `
     <div class="series">
@@ -505,49 +528,87 @@ Vue.component('schema-series',{
         <input type="radio" value='edit' v-model="action" /> EDIT
         <input type="radio" value='copy' v-model="action" /> COPY
       </span>-->
-      <div class="form-grid">
+      <div class="post-grid">
+        <label class="form-lbl">Post:</label>
+        <span class="form-input text-yellow">{{ posting }}</span>
+      </div>
+      <div class="post-grid">
         <label class="form-lbl">Title:</label>
         <input type="text" class="form-input form-stretch" v-model="meta.title" />
       </div>
-      <div class="form-grid">
+      <div class="post-grid">
         <label class="form-lbl">Author:</label>
         <input type="text" class="form-input" v-model="meta.author" />
       </div>
-      <div class="form-grid">
+      <div class="post-grid">
         <label class="form-lbl">Dated:</label>
-        <span class="form-input"> {{ dtd }} (Note: This value will update at publication time.)</span>
+        <span class="form-input text-yellow"> {{ dtd() }} (Note: This value will update at publication time.)</span>
       </div>
-      <div class="form-grid">
+      <div class="post-grid">
         <label class="form-lbl">Brief:</label>
         <input type="text" class="form-input form-stretch" v-model="meta.brief" />
         <span class="form-desc">A one-line description of the post content...</span>
       </div>
-      <div class="form-grid">
+      <div class="post-grid">
         <label class="form-lbl">Keywords:</label>
         <input type="text" class="form-input form-stretch" v-model="meta.keywords" />
         <span class="form-desc">A comma separated list of search keywords...</span>
       </div>
-      <div v-if="mode=='developer'" class="form-grid">
+      <div v-if="mode=='developer'" class="post-grid">
         <label class="form-lbl">Template:</label>
-        <input type="text" class="form-input form-stretch" v-model="meta.template" />
-        <span class="form-desc">Template used to display series content.</span>
+        <span class="form-input text-yellow"> {{ meta.template }}</span>
+        <span class="form-desc">Template used to display series content. (Note: Value set by schema.)</span>
       </div>
-      <div class="form-grid">
+      <div v-if="mode=='developer'" class="post-grid">
+        <label class="form-lbl">Element:</label>
+        <span class="form-input text-yellow"> {{ meta.element }}</span>
+        <span class="form-desc">Data element used to store series content. (Note: Value set by schema.)</span>
+      </div>
+      <div v-if="categories.length" class="post-grid">
+        <label class="form-lbl">Categories:</label>
+         <span class="form-input">
+           <span class="series-categories" v-for="cat,i of categories" :key='i'><input type="checkbox" v-model="checkedCategories" :value="cat" @change="chkd"/> {{cat}}</span> 
+         </span>
+        <span class="form-desc">Select one or more group filing categories.</span>
+      </div>
+      <div class="post-grid">
         <label class="form-lbl"><button @click="clear">CLEAR</button></label>
-        <span class="form-input"><button @click="view=!view">{{ caption }}</button></span>
+        <span class="form-input"><button @click="viewPosts=!viewPosts">{{ caption }}</button></span>
       </div>
-    <fieldset v-show="view" class="fieldset-element"><legend class="legend-element"> Previous Postings... </legend>
-      <p>Series listing here...</p>
+    <fieldset v-show="viewPosts" class="fieldset-element"><legend class="legend-element"> Previous Postings... </legend>
+      <div v-for="p,i in posts" class="post-grid">
+        <span class="form-lbl text-large">#{{ i+1 }}
+          <i class="far fa-edit fa-fw right tooltip" @click="post('edit',i)"><tip>edit this post</tip></i>
+          <i class="fas fa-copy fa-fw right tooltip" @click="post('copy',i)"><tip>copy this post</tip></i>
+        </span>
+        <span class="form-input">{{ p.title }}, {{ p.brief }}</span>
+        <span class="form-desc text-small">by {{ p.author }}, {{ dtd(p.dtd) }}, file: {{ p.file }}</span>
+      </div>
     </fieldset>
     </fieldset>
     </div>`,
   computed: {
-    caption: function() { return this.view ? 'HIDE PREVIOUS POSTINGS' : 'VIEW PREVIOUS POSTINGS' },
-    dtd: function() { return new Date().style('iso','local') },
-    meta: function() { return this.series.meta||{}; }
+    caption: function() { return this.viewPosts ? 'HIDE PREVIOUS POSTINGS' : 'VIEW PREVIOUS POSTINGS' },
+    categories: function() { return (this.series.categories||'').split(',').map(c=>c.trim()) },
+    meta: function() { return this.series.meta||{}; },
+    posting: function() { return this.series.active===null ? 'New Posting #'+(this.series.data.length+1) : 
+      'Editing post #'+(this.series.active+1) },
+    posts: function() { return this.series.data.map(p=>p.$meta); }
   },
+  created: function() { this.checkedCategories = this.categories.filter(c=>(this.meta.categories||'').split(',').includes(c)); },
   methods: {
-    clear: function() { this.meta = { author:'', title:'', brief:'', dtd:'', keywords:'' }; }
+    chkd: function(e) { this.meta.categories = this.checkedCategories.join(','); },
+    clear: function() {
+      this.series.active = null;
+      this.series.meta = Object.assign({},this.meta,{author:'',title:'',brief:'',keywords:'',file:''});
+      this.$emit('act','series',undefined); // clear schema data
+    },
+    dtd: function(d) { return new Date(d||new Date()).style('iso','local') },
+    post: function(mode,i) {
+      this.series.active = mode=='edit' ? i: null;
+      this.series.meta = Object.assign({},this.series.data[i].$meta);
+      this.$emit('act','series',Object.assign({},this.series.data[i].$data)); // load schema data
+    }
   }
 });
 
@@ -556,29 +617,28 @@ Vue.component('schema-tree',{
   props: ['heritage','highlight','expand','mode','parent'],
   template: `
     <ul class="schema-list">
-    <li class="schema-list-item" v-for="child,index in visibleChildren" @click.stop="touch(heir[index])">
+    <li class="schema-list-item" v-for="[child,index,heir] in visibleChildren" @click.stop="touch(heir)">
       <span class="schema-container-icon" v-if="child.container">
       <i v-show="!isOpen(index)" class="fas fa-folder-plus" @click.stop="toggle(index)"></i>
       <i v-show="isOpen(index)" class="fas fa-folder-minus" @click.stop="toggle(index)"></i>
       </span>
-      <span :class="'schema-list-label tooltip'+((heir[index]==highlight)?' se-active':'')">{{ child.label }}<tip class="tip-left">{{ child.description }}</tip></span>
-      <schema-tree v-if="child.container" v-show="isOpen(index)" :highlight="highlight" :expand="expand" :heritage="heir[index]" :mode="mode"
+      <span :class="'schema-list-label tooltip'+((heir==highlight)?' se-active':'')">{{ child.label }}<tip class="tip-left">{{ child.description }}</tip></span>
+      <schema-tree v-if="child.container" v-show="isOpen(index)" :highlight="highlight" :expand="expand" :heritage="heir" :mode="mode"
         :parent="parent.children[index]" @act="act"></schema-tree>
     </li>
     <li v-show="mode=='developer'" class="schema-add-child">
-      <cms-menu class="test" :menu="'child'" :mode="mode" @pick="addChild"></cms-menu>
+      <cms-menu :menu="'child'" :mode="mode" @pick="addChild"></cms-menu>
     </li>
     </ul>`,
-  computed: {  // only gets called for schema-tree instance, which by definition will be a parent...
-    heir: function() { return (this.parent.children||[]).map((c,i)=>!c.hidden||this.mode=='developer' ? [this.heritage||'*',i].join('.') : null).filter(c=>c!==null); },
-    id: function() { return makeArrayOf(this.parent.children.length,(v,i)=>this.name+'-'+i); },
-    visibleChildren: function() { return (this.parent.children||[]).filter(c=>!c.hidden||this.mode=='developer'); }
+  computed: {  
+    // only gets called for schema-tree instance, which by definition will be a parent...
+    visibleChildren: function() { return this.parent.children.map((c,i)=>(!c.hidden || this.mode=='developer')?[c,i,[this.heritage||'*',i].join('.')]:null).filter(x=>x!=null) }
   },
   methods: {
     act: function(msg) { this.$emit('act',msg); },
     addChild: function(m,c,o) { this.$emit('act',{action: 'add', parent: this.parent, element:c}) },
-    toggle: function(index) { Vue.set(this.open,index,!this.open[index]); },
     isOpen: function(i) { return (this.open[i]&&(this.expand!='-'))||(this.expand=='+'); },
+    toggle: function(index) { Vue.set(this.open,index,!this.open[index]); },
     touch: function(heir) { this.$emit('act',{action: 'touch', heritage: heir}); }
   }
 });
@@ -594,7 +654,7 @@ Vue.component('schema-schema',{
         <history :history="schema.history"></history>
       </span>
       <span v-else>
-        <schema-series v-if="schema.series" :mode="mode" :series="schema.series"></schema-series>
+        <schema-series v-if="schema.series" :mode="mode" :series="schema.series" @act="act"></schema-series>
         <component v-for="ch,i in schema.children" :is="'schema-'+ch.element" :active="activeChild(i)" :context="context" :key="i" :mode="mode"></component>
       </span>
       </fieldset>
@@ -603,7 +663,7 @@ Vue.component('schema-schema',{
     schema: function() { return this.active.child; }
   },
   methods: {
-    act: function(a,x) { this.$emit('act',{action:a, option:x}); },
+    act: function(a,x) { this.$emit('act',{action:a, data:x}); },
     activeChild: function(i) { return this.$root.getHeritage([this.active.heir,i].join('.')); }
   }
 });
@@ -1163,19 +1223,19 @@ Vue.component('schema-link',{
           <span class="form-desc">Output data format</span>
         </div>
         <div class="form-grid">
-          <label class="form-lbl">Target:</label>
-          <span class="form-input">
-          <input type="checkbox" v-model="my.link.external" /> Blank Tab or Window
-          </span>
-          <span class="form-desc">Target an external blank tab or window when link opens</span>
-        </div>
-        <div class="form-grid">
           <label class="form-lbl">Action:</label>
           <span class="form-input">
           <input type="radio" value="href" v-model="my.link.action" /> Hyperlink 'href'
           <input type="radio" value="onclick" v-model="my.link.action"/> Hyperlink 'onclick'
           </span>
           <span class="form-desc">Defines property name used for link action</span>
+        </div>
+        <div class="form-grid">
+          <label class="form-lbl">Target:</label>
+          <span class="form-input">
+          <input type="checkbox" v-model="my.link.external" /> Blank Tab or Window
+          </span>
+          <span class="form-desc">Target an external blank tab or window when link opens</span>
         </div>
       </fieldset>
       <div class="form-grid">
@@ -1205,7 +1265,22 @@ Vue.component('schema-link',{
       <div class="form-grid">
         <label class="form-lbl">Link:</label>
         <input ref="link" class="form-input form-stretch" type="text" v-model="my.link.link" @input="chgLink" />
-        <span class="form-desc">Hyperlink destination. Prefix with # for local link</span>
+        <span class="form-desc">Hyperlink destination. Prefix with # for local (within site) link</span>
+      </div>
+      <div class="form-grid">
+        <label class="form-lbl">Reference:</label>
+        <input class="form-input" type="text" v-model="my.link.ref" />
+        <span class="form-desc">Optional internal page reference (i.e. hash label, e.g. #here)</span>
+      </div>
+      <div class="form-grid">
+        <label class="form-lbl">Analytics:</label>
+        <input class="form-input form-stretch" type="text" v-model="my.link.analytics" />
+        <span class="form-desc">Optional comma delimited string of analytics fields</span>
+      </div>
+      <div class="form-grid">
+        <label class="form-lbl">Expires:</label>
+        <input class="form-input" type="date" v-model="fields[0]" @input="chgDate" />
+        <span class="form-desc">Optional expiration date</span>
       </div>
       <div class="form-grid">
         <label class="form-lbl">Data:</label>
@@ -1219,19 +1294,29 @@ Vue.component('schema-link',{
     </div>
     </div>`,
   computed: { 
+    fields: function() { return new Date(this.active.child.link.expires||(new Date())).style('form') },
     isVisible: function () { return !this.active.child.hidden || (this.mode=='developer'); },
     locked: function() { return this.lock||this.active.child.readonly; },
     my: function() {return this.active.child; },  // shorthand
     preview: function() { return typeof this.my.data=='object' ? (this.my.data||{}).asString() : this.my.data; }
   },
   methods: {
+    chgDate: function() { this.active.child.expires = new Date(this.fields[0]); },
     chgLink: function(e) {
-      let { action, external, format, image, link, text } = this.my.link;
+      let { action, analytics, expires, external, format, image, link, ref, target, text } = this.my.link;
       if (format=='anchor') {
         let img = (image) ? '<img src="'+image+'" alt="'+text+'" />' : null;
         this.my.data = '<a href="'+(action=='href'?'':'" onclick="')+link+'"'+(external?' target="_blank"':'')+(img?' title="'+text+'"':'')+'>'+(img?img:text)+'</a>';
       } else {
-        this.my.data = { image: image, link: link, target: external ? "_blank" : undefined, text: text};
+        this.my.data = { 
+          analytics: analytics,
+          expires: expires,
+          image: image, 
+          link: link, 
+          ref: ref,
+          target: external ? "_blank" : undefined, 
+          text: text
+        };
       };
     }
   }

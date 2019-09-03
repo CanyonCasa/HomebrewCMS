@@ -10,11 +10,8 @@
     "scripts": "/scripts",
     "styles": "/styles"
   },
-  "locations": {
-    "cms": "/",
-    "preview": "http://localhost",
-    "restricted": "../../restricted",
-    "live": "http://padre"
-  },
-  "pretty": true
+  "paths": {
+    "dataEngine": "/cms/$",
+    "userSchema": "/cms/xschema.json"
+  }
 }

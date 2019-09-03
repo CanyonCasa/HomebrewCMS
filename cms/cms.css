@@ -42,6 +42,7 @@ textarea{ width: 100%, overflow:auto; white-space: wrap; }
 
 .bkgd-orange { color:#FFFFFF!important;background-color:#FF5722!important }
 .text-orange { color:#FF5722!important }
+.text-yellow { color:#FFFF00!important }
 .text-black { color:#000000!important }
 .text-gray { color:#808080!important }
 .text-red { color:#FF0000!important }
@@ -58,6 +59,8 @@ textarea{ width: 100%, overflow:auto; white-space: wrap; }
 
 .text-body { font-family: var(--body-font); }
 .text-heading { font-family: var(--heading-font); } 
+
+.right { float: right!important; }
 
 .no-select { -moz-user-select: none; -webkit-user-select: none; -ms-user-select: none; user-select: none; }
 .tooltip { position: relative; }
@@ -178,8 +181,9 @@ li.schema-add-child i:first-of-type { color: black; }
 .fieldset-series, { border: 1px solid white; }
 .fieldset-info { border: 1px solid black; }
 .fieldset-container { border: 2px solid black;  padding: 12px; }
+.series-categories { padding-right: 16px; }
 
-.form-grid {
+.form-grid, .post-grid {
   display: grid;
   grid-template-rows: auto;
   grid-template-columns: 100px auto;
@@ -187,6 +191,7 @@ li.schema-add-child i:first-of-type { color: black; }
     'form-lbl form-input'
     'form-lbl form-desc';
 }
+.post-grid { grid-template-columns: 160px auto; }
 .form-grid-alt {
   display: grid;
   grid-template-rows: auto;
@@ -226,6 +231,7 @@ ul.f-tree li { margin: 2px 4px 2px 8px; padding: 2px; }
 .f-tree-size { grid-area: f-tree-size; justify-self: end; padding-right: 16px; }
 .f-tree-date { grid-area: f-tree-date; justify-self: start; }
 .f-tree-indent { margin-left: 1em; }
+.f-tree-file-dir { color: white; }
 
 .note-grid {
   display: grid;
@@ -255,12 +261,13 @@ ul.f-tree li { margin: 2px 4px 2px 8px; padding: 2px; }
   color: white;
   padding: 2px;
   grid-template-rows: auto;
-  grid-template-columns: 160px 40px auto;
+  grid-template-columns: 132px 72px 52px auto;
   grid-template-areas:
-    'history-dtd history-author history-note';
+    'history-dtd history-version history-author history-note';
 }
-.history-dtd { grid-area: history-dtd; align-self: start; justify-self: center; }
-.history-author { grid-area: history-author; align-self: start; justify-self: center; }
+.history-dtd { grid-area: history-dtd; align-self: start; justify-self: start; }
+.history-version { grid-area: history-version; align-self: start; justify-self: end; padding-right: 8px; }
+.history-author { grid-area: history-author; align-self: start; justify-self: start; }
 .history-note { grid-area: history-note; align-self: start; justify-self: start; }
 
 /* Schema pane definitions */

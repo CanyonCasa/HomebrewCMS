@@ -169,7 +169,7 @@ var schemaDefinitions = {
       element: 'link',
       hidden: false,
       label: 'LINK',
-      link: {action:'href', external:'', format:'anchor', image:'', link:'', text:''},
+      link: {action:'href', analytics:'', expires:'', external:'', format:'anchor', image:'', link:'', ref:'', target:'', text:''},
       name: 'link',
       notes: [],
       readonly: false
@@ -219,10 +219,12 @@ var schemaDefinitions = {
   },
   series: {
     active: null,       // index of active post
+    categories: 'Homelessness,Health',     // defines available filing categories as comma delimited list
     data: [],           // placeholder for all posts
     meta: {
       author: '',
       brief: '',
+      categories: '',   // filing categories for posting as comma delimited list
       dtd: '',
       file: '', 
       keywords: '',
@@ -234,3 +236,5 @@ var schemaDefinitions = {
 
 ///console.log(JSON.stringify(cfg,null,2));
 ///console.log(JSON.stringify(schema,null,2));
+
+///module.exports = {cfg:cfg, schemaDefinitions:schemaDefinitions};

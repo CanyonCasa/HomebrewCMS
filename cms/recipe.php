@@ -87,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD']=='POST' && getKey('submit',$_REQUEST,'')) {
 
 // CORS support...
 $xorigin = getKey('HTTP_ORIGIN',$_SERVER,'');
-if($xorigin && in_array($xorigin,[$cfg['locations']['live'],$cfg['locations']['preview']])) {
+if($xorigin && in_array($xorigin,[$cfg['locations']['live'],$cfg['locations']['preview'],$cfg['locations']['domain']])) {
   header('Access-Control-Allow-Origin: '.$_SERVER['HTTP_ORIGIN']);
   header('Access-Control-Expose-Headers: *');  // needed for passing any CORS restricted headers
 };
