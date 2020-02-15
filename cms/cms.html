@@ -16,11 +16,10 @@
 <script src="Extensions2Client.js"></script>
 <script src="/cdn/npm/vue@2.5.15/dist/vue.js"></script>
 <script src="/cdn/markdown-it/8.4.2/markdown-it.min.js"></script>
-<script src="/cdn/markdown-it/markdown-it-attrs.js"></script>
 <script src="/cdn/markdown-it/markdown-it-link-plus.js"></script>
-<script src="/cdn/markdown-it/markdown-it-span.min.js"></script>
 <script src="/cdn/markdown-it/markdown-it-div.min.js"></script>
 <script src="/cdn/markdown-it/markdown-it-span.min.js"></script>
+<script src="/cdn/markdown-it/markdown-it-attrs.js"></script>
 <script src="VueFetchWrapper.js"></script>
 <script src="VueStorageWrapper.js"></script>
 <script src="cmsVueLib.js"></script>
@@ -49,11 +48,11 @@
 <h3>Schema ...</h3>
 <!--<div :class="'schema-tree-source'+((schema.id==active.id)?' schema-active':'')" @click="act({action:'touch'})">-->
 <div :class="'schema-tree-source'+((active.heir=='*')?' schema-active':'')" @click="act({action:'touch'})">
-  <p class="schema-label">{{ schema.label }} <span>[{{ schema.files.schema }}]</span></p>
+  <p class="schema-label">{{ schema.label }} <span>[{{ [schema.files.store,schema.files.schema].join('/') }}]</span></p>
   <p class="schema-desc">{{ schema.description }}</p>
 </div>
 <div class="schema-tree-elements">
-  <span class="tooltip">Elements...<tip>Edit schema elements...</tip></span>
+  <span class="tooltip">Elements...<tip class="tip-left">Edit schema elements...</tip></span>
   <!--<schema-tree :highlight="active.id" :expand="treeExpand" :mode="mode" :parent="schema" @act="act"></schema-tree>-->
   <schema-tree :highlight="active.heir" :expand="treeExpand" :mode="mode" :parent="schema" @act="act"></schema-tree>
 </div>
@@ -83,7 +82,7 @@
 
 <div class="view" v-show="mngrView=='publish'">
 <h4>Publishing ...</h4>
-<mngr-publish :sources="sources" :author="user.name" :version="schema.version" @act="act"></mngr-publish>
+<mngr-publish :sources="sources" :author="user.name" :mode="mode" :version="schema.version" @act="act"></mngr-publish>
 </div>
 
 <div class="view" v-show="mngrView=='resources'">

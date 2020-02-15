@@ -328,8 +328,8 @@ Vue.component('mngr-resources',{
 });
 
 Vue.component('mngr-publish',{
-  data: () => ({ backup:true, dx: new Date().style('YYYYMMDD'), newVersion: '', note: '' }),
-  props: ['author','sources','version'],
+  data: () => ({ backup:true, dx: new Date().style('YYYYMMDD'), newVersion: '', note: '', wrEn:true }),
+  props: ['author','mode','sources','version'],
   template: `
     <div>
       <fieldset class="fieldset-element"><legend class="legend-element"> Settings... </legend>
@@ -361,6 +361,11 @@ Vue.component('mngr-publish',{
         <span class="form-input">Uploads schema and data files to the live web site: [{{ sources.live }}]</span>
         <span class="form-desc">NOTE: Records history and changes both preview and live websites.</span>
       </div>
+      <div class="form-grid" v-if="mode=='developer'">
+        <label class="form-lbl">Write Enable:</label>
+        <span class="form-input"><input type="checkbox" v-model="wrEn"/>Debug switch to prevent writing files on the server</span>
+        <span class="form-desc">Contents dumped to console.</span>
+      </div>
       </fieldset>
     </div>`,
   created: function() { this.makeVersion(); },
@@ -368,7 +373,7 @@ Vue.component('mngr-publish',{
     makeVersion: function() { this.newVersion = (this.version&&(this.version.startsWith(this.dx))) ? this.version.replace(/v(\d+)/,(m,n)=>'v'+(+n+1)) : this.dx+'v1'; },
     publish: function(dest) {
       var history = { author: this.author, dtd: new Date().style('iso'), note: this.note, version: this.newVersion };
-      this.$emit('act',{ action: 'publish', dest: dest, args: {backup:this.backup,history:history} });
+      this.$emit('act',{ action: 'publish', dest: dest, args: {backup:this.backup,history:history,writeEnable:this.wrEn} });
       if (dest='live') this.note='';   // prevent repeat form submission
     }
   },
@@ -576,10 +581,10 @@ Vue.component('schema-series',{
         <span class="form-input"><button @click="viewPosts=!viewPosts">{{ caption }}</button></span>
       </div>
     <fieldset v-show="viewPosts" class="fieldset-element"><legend class="legend-element"> Previous Postings... </legend>
-      <div v-for="p,i in posts" class="post-grid">
-        <span class="form-lbl text-large">#{{ i+1 }}
-          <i class="far fa-edit fa-fw right tooltip" @click="post('edit',i)"><tip>edit this post</tip></i>
-          <i class="fas fa-copy fa-fw right tooltip" @click="post('copy',i)"><tip>copy this post</tip></i>
+      <div v-for="p,i in posts.slice().reverse()" class="post-grid">
+        <span class="form-lbl text-large">#{{ posts.length-i }}
+          <i class="far fa-edit fa-fw right tooltip" @click="post('edit',posts.length-i-1)"><tip>edit this post</tip></i>
+          <i class="fas fa-copy fa-fw right tooltip" @click="post('copy',posts.length-i-1)"><tip>copy this post</tip></i>
         </span>
         <span class="form-input">{{ p.title }}, {{ p.brief }}</span>
         <span class="form-desc text-small">by {{ p.author }}, {{ dtd(p.dtd) }}, file: {{ p.file }}</span>
@@ -591,9 +596,9 @@ Vue.component('schema-series',{
     caption: function() { return this.viewPosts ? 'HIDE PREVIOUS POSTINGS' : 'VIEW PREVIOUS POSTINGS' },
     categories: function() { return (this.series.categories||'').split(',').map(c=>c.trim()) },
     meta: function() { return this.series.meta||{}; },
-    posting: function() { return this.series.active===null ? 'New Posting #'+(this.series.data.length+1) : 
+    posting: function() { return this.series.active===null ? 'New Posting #'+(this.series.index.length+1) : 
       'Editing post #'+(this.series.active+1) },
-    posts: function() { return this.series.data.map(p=>p.$meta); }
+    posts: function() { return this.series.index.map(p=>p.$meta); }
   },
   created: function() { this.checkedCategories = this.categories.filter(c=>(this.meta.categories||'').split(',').includes(c)); },
   methods: {
@@ -606,8 +611,8 @@ Vue.component('schema-series',{
     dtd: function(d) { return new Date(d||new Date()).style('iso','local') },
     post: function(mode,i) {
       this.series.active = mode=='edit' ? i: null;
-      this.series.meta = Object.assign({},this.series.data[i].$meta);
-      this.$emit('act','series',Object.assign({},this.series.data[i].$data)); // load schema data
+      this.series.meta = Object.assign({},this.series.index[i].$meta);
+      this.$emit('act','series',Object.assign({},this.series.index[i].$data)); // load schema data
     }
   }
 });
@@ -632,7 +637,10 @@ Vue.component('schema-tree',{
     </ul>`,
   computed: {  
     // only gets called for schema-tree instance, which by definition will be a parent...
-    visibleChildren: function() { return this.parent.children.map((c,i)=>(!c.hidden || this.mode=='developer')?[c,i,[this.heritage||'*',i].join('.')]:null).filter(x=>x!=null) }
+    visibleChildren: function() {
+      return this.parent.children.map((c,i)=>
+        (!c.hidden || this.mode=='developer') ? [c,i,[this.heritage||'*',i].join('.')]:null).filter(x=>x!=null);
+    }
   },
   methods: {
     act: function(msg) { this.$emit('act',msg); },

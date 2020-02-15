@@ -117,14 +117,14 @@ _HomebrewCMS_ assumes the following server directory structure for files, which 
 
 - Initial release.
 - Second release. Schema not compatible with prior release.
+- Third release. Redefined serial page structure breaking into two schema.
 
 ### To Do
 
-- Complete recipe.php Apache script and develop cms.js NodeJS middleware
+- Develop cms.js NodeJS middleware
 - Example (barebones) site schema and templates.
 - User management support.
 - keywords and indexing (JXV) file definition.
 - Minimization support.
 - Session support.
-- Restructuring of data as part of schema to be reactive (to fix refresh issues.
 - Define and document HomebrewAPI
