@@ -172,7 +172,6 @@ var vm = new Vue({
       });
     },
     load: function(rqst) {
-      scribe.log("load: ",this.user.pw);
       rqst.headers = (rqst.headers||{}).mergekeys({
         'Authorization': 'Basic ' + window.btoa(this.user.name+":"+this.user.pw)
       });
@@ -339,8 +338,7 @@ var vm = new Vue({
       let active = this.schema.series ? this.schema.series.active : null;
       // determine of this is a new post or edit of last post vs edit of an old post...
       let newEdit = !this.schema.series || ((active==null) || (active==(this.schema.series.index.length-1)));
-      console.log("publish:",active,newEdit);
-      let meta = (this.schema.series||{}).meta||{};
+      let meta = (this.schema.series||{}).meta||{}; // only needs to be defined for series, default to {} to prevent reference errors.
       // restore saved schema if an old post has been editted.
       let schemaSchema = (newEdit ? this.schema : this.save.schema).copyByValue();
       let schemaData = this.extractData();                      // current data for normal post or series post
@@ -394,25 +392,30 @@ var vm = new Vue({
         backupSpec = (args.backup) ? spec.replace('.json',bakExt) : '';
         files.push({ backup: backupSpec, contents: seriesInstanceData, folder: 'data', name: spec });
       };
+      scribe.log("uploading...");
+      files.forEach(f=>{ console.log(f.folder+'/'+f.name+':',f.contents); });
+      this.tmp = {args: args};
       if (args.writeEnable) { 
         // publish to live site if specified
         if (dest=='live'){
-          this.load({url:cfg.locations['live']+cfg.locations.cms+'@upload', method:'POST', body:{files: files},verbose:debug})
+          let liveRqst = {url:cfg.locations['live']+cfg.locations.cms+'@upload', method:'POST', body:{files: files},verbose:debug};
+          this.tmp.liveRqst = liveRqst;
+          scribe.log("live rqst:",JSON.stringify(liveRqst,null,2));
+          this.load(liveRqst)
             .then(res=>{ scribe.info(res.jxOK ? res.jx : res.raw); })
             .catch(e=>{scribe.error(e)});
           if (this.schema.series) {
-            /// not sure about this
             this.schema.series.index = schemaSchema.series.index;  // backfill series data
-            this.schema.series.active = schemaSchema.series.index.length-1;
-            /// new meta data???
+            this.schema.series.meta = schemaSchema.series.meta;  // backfill series metadata
           };
         };
         // always publish to preview site
-        this.load({url:cfg.locations['preview']+cfg.locations.cms+'@upload', method:'POST', body:{files: files},verbose:debug})
+        let previewRqst = {url:cfg.locations['preview']+cfg.locations.cms+'@upload', method:'POST', body:{files: files},verbose:debug};
+        scribe.log("preview rqst:",JSON.stringify(previewRqst,null,2));
+        this.load(previewRqst)
           .then(res=>{ scribe.info(res.jxOK ? res.jx : res.raw); })
           .catch(e=>{scribe.error(e)});
-      } else {
-        files.forEach(f=>{ console.log(f.folder+'/'+f.name+':',f.contents); });
+        this.tmp.preview = previewRqst;
       };
     },
     scribeObj: function() { 

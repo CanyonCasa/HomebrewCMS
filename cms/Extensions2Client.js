@@ -158,8 +158,8 @@ if ((typeof location!=='undefined')&&!location.base)
 // function to create and populate an array of given size and values, note value can even be a function
 if (!makeArrayOf) function makeArrayOf(size,value) { return Array.apply(null, Array(size)).map(function(v,i,a){ return (typeof value=='function') ? value(v,i,a) : value }); };
 
-// function to correctly join an array of path parts into a valid path...
-if (!makePath) function makePath() { return Array.from(arguments).join('/').replace(/\/{2,}/g,'/').replace(/:\//,'://'); };
+// function to correctly join an array of path parts, excluding "empty, null, or undefined parts", into a valid path...
+if (!makePath) function makePath() { return Array.from(arguments).filter(e=>e).join('/').replace(/\/{2,}/g,'/').replace(/:\//,'://'); };
 
 // formats JSON as HTML for pretty printing in color... 
 //   requires css class definitions for colors: .json (wrap everything), .json-key, .json-value, .json-string, .json-boolean

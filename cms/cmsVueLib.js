@@ -1048,28 +1048,33 @@ Vue.component('schema-date',{
         <div v-show="!my.hidden">
         <span class="form-input">
         <fieldset class="fieldset-element fieldset-inline" v-show="my.format!='time'"><legend class="legend-element"> Date </legend>
-        <input type="date" :disabled="locked" v-model="fields[0]" @input="chg" />
+        <input type="date" :disabled="locked" v-model="fields[0]" @input="chgDate" />
         </fieldset>
         <fieldset class="fieldset-element fieldset-inline" v-show="my.format!='date'"><legend class="legend-element"> Time </legend>
-        <input type="time" :disabled="locked" v-model="fields[1]" @input="chg" />
+        <input type="time" :disabled="locked" v-model="fields[1]" @input="chgDate" />
         </fieldset>
         </span>
-        <span class="form-desc">{{ my.description }}</span>
+        <span class="form-desc form-desc-date">{{ my.description }}<br />Zulu: {{ zulu }}</span>
         <e-notes :notes="my.notes" :context="context"></e-notes>
         </div>
         <p v-show="my.hidden" class="alert">Hidden element not avaiable for editing!</p>
       </fieldset>
     </div>
     </div>`,
-  updated: function() { if (!this.active.child.data) this.active.child.data = new Date().toISOString(); },
   computed: {
-    fields: function() { return new Date(this.active.child.data).style('form') },
+    fields: function() { return this.validDate(this.active.child.data).style('form'); },
     isVisible: function () { return !this.active.child.hidden || (this.mode=='developer'); },
     locked: function() { return this.lock||this.active.child.readonly; },
-    my: function() {return this.active.child; } // shorthand
+    my: function() {return this.active.child; }, // shorthand
+    zulu: function() { return new Date(this.active.child.data); }
   },
   methods: {
-    chg: function() { this.active.child.data = new Date(this.fields.join(' ')); this.$emit('chg'); }
+    chgDate: function() { 
+      let now = new Date().style('YYYY-MM-DDThh:00','local').split('T');
+      this.active.child.data = new Date([this.fields[0]||now[0],this.fields[1]||now[1]].join(' ')).toISOString();
+      this.$emit('chg');
+    },
+    validDate: function(d){ return (new Date(d)=='Invalid Date') ? new Date() : new Date(d); }
   }
 });
 
