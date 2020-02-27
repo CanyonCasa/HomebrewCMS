@@ -1293,7 +1293,8 @@ Vue.component('schema-link',{
       <div class="form-grid">
         <label class="form-lbl">Expires:</label>
         <input class="form-input" type="date" v-model="fields[0]" @input="chgDate" />
-        <span class="form-desc">Optional expiration date</span>
+        <span class="form-desc form-desc-date">Optional expiration date<br />Zulu: {{ zulu }}</span>
+
       </div>
       <div class="form-grid">
         <label class="form-lbl">Data:</label>
@@ -1307,14 +1308,19 @@ Vue.component('schema-link',{
     </div>
     </div>`,
   computed: { 
-    fields: function() { return new Date(this.active.child.link.expires||(new Date())).style('form') },
+    fields: function() { return this.validDate(this.active.child.link.expires).style('form') },
     isVisible: function () { return !this.active.child.hidden || (this.mode=='developer'); },
     locked: function() { return this.lock||this.active.child.readonly; },
     my: function() {return this.active.child; },  // shorthand
-    preview: function() { return typeof this.my.data=='object' ? (this.my.data||{}).asString() : this.my.data; }
+    preview: function() { return typeof this.my.data=='object' ? (this.my.data||{}).asString() : this.my.data; },
+    zulu: function() { return new Date(this.active.child.link.expires); }
   },
   methods: {
-    chgDate: function() { this.active.child.expires = new Date(this.fields[0]); },
+    chgDate: function() { 
+      let now = new Date(new Date().style('YYYY-MM-DD')).style('iso','utc').split('T');
+      this.active.child.link.expires = new Date([this.fields[0]||now[0],now[1]].join(' ')).toISOString();
+      this.chgLink();
+    },
     chgLink: function(e) {
       let { action, analytics, expires, external, format, image, link, ref, target, text } = this.my.link;
       if (format=='anchor') {
@@ -1331,7 +1337,8 @@ Vue.component('schema-link',{
           text: text
         };
       };
-    }
+    },
+    validDate: function(d){ return (new Date(d)=='Invalid Date') ? new Date() : new Date(d); }
   }
 });
 

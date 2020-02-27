@@ -23,8 +23,8 @@ if (!Date.prototype.months) Date.prototype.months =
   ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
 // define a function for creating formated date strings
-// Date.prototype.style(<format_string>|'iso'|'form')
-//  formats a date according to specified string defined by ...
+// Date.prototype.style(<format_string>|'iso'|'form'[,'local'|'utc'])
+// formats a date according to specified string defined by ...
 //    'text':   quoted text preserved, as well as non-meta characters such as spaces
 //    Y:        4 digit year, i.e. 2016
 //    M:        month, i.e. 2
@@ -55,14 +55,17 @@ if (!Date.prototype.months) Date.prototype.months =
 //    d.style();           // { Y: 2016, M: 12, D: 7, h: 21, m: 22, s: 11, x: 262, SM: 'December', SD: 'Wednesday', a: 'PM', e: 1481145731.262, z: 'MST', N: 3, LY: true, dst: false }
 //    d.style().e;         // 1481145731.262
 //    d.style("MM/DD/YY"); // '12/07/16'
-
+// local flag signifies a conversion from UTC to local OR local to UTC; 
+//  'local':    treats input as UTC time and adjusts to local time before styling (default)
+//  'utc':      treats input as local time and adjusts to UTC before styling
 if (!Date.prototype.style)
   Date.prototype.style = function(frmt,local) {
-    var dx = (local||frmt=='form') ? new Date(this-this.getTimezoneOffset()*60*1000) : this;
+    var sign = String(local).toLowerCase()=='utc' ? -1 : 1;
+    var dx = (local||frmt=='form') ? new Date(this-sign*this.getTimezoneOffset()*60*1000) : this;
     base = dx.toISOString();
     switch (frmt||'') {
       case 'form': return base.split(/[TZ\.]/i).slice(0,2); break;  // values for form inputs, always local
-      case 'iso': return (local) ? base.replace(/z/i,dx.zone) : base; break; // ISO Zulu time or localtime
+      case 'iso': return (local && sign==1) ? base.replace(/z/i,dx.zone) : base; break; // ISO Zulu time or localtime
       case '':  // object of date field values
         var [Y,M,D,h,m,s,ms] = base.split(/[\-:\.TZ]/);
         return {Y:+Y,M:+M,D:+D,h:+h,m:+m,s:+s,x:+ms,
@@ -70,7 +73,7 @@ if (!Date.prototype.style)
           e:this.valueOf()*0.001,z:dx.zone,N:dx.getDay(),LY: Y%4==0&&(Y%100==Y%400),
           dst: !!(new Date(1970,1,1).getTimezoneOffset()-dx.getTimezoneOffset())}; break;
       default:
-        var flags = dx.style(); flags['YYYY'] = flags.Y; flags['hh'] = flags['h']; if (flags['h']>12) flags['h'] %= 12;
+        var flags = dx.style(); flags['YYYY'] = flags.Y; flags['hh'] = ('0'+flags['h']).substr(0,2); if (flags['h']>12) flags['h'] %= 12;
         var token = /Y(?:YYY|Y)?|S[MD]|0?([MDNhms])\1?|[aexz]|"[^"]*"|'[^']*'/g;
         var pad = function(s) { return ('0'+s).slice(-2) };
         return (frmt).replace(token, function($0) { return $0 in flags ? flags[$0] : ($0.slice(1) in flags ? pad(flags[$0.slice(1)]) : $0.slice(1,$0.length-1)); });
