@@ -42,6 +42,7 @@ if (!Date.prototype.months) Date.prototype.months =
 //    e:        Unix epoch, seconds past midnight Jan 1, 1970
 //    LY:       leap year flag, true/false (not usable in format)
 //    dst:      Daylight Savings Time flag, true/false (not usable in format)
+//    ofs:      Local time offset (not usable in format)
 //    default - returns an object representing fields noted above
 //  defined format keywords ...
 //    form:               ["YYYY-MM-DD","hh:mm:ss"], needed by form inputs for date and time (always local)
@@ -68,10 +69,11 @@ if (!Date.prototype.style)
       case 'iso': return (local && sign==1) ? base.replace(/z/i,dx.zone) : base; break; // ISO Zulu time or localtime
       case '':  // object of date field values
         var [Y,M,D,h,m,s,ms] = base.split(/[\-:\.TZ]/);
-        return {Y:+Y,M:+M,D:+D,h:+h,m:+m,s:+s,x:+ms,
+        return {Y:+Y,M:+M,D:+D,h:+h,m:+m,s:+s,x:+ms,z:dx.zone,
           SM: this.months[M-1], SD: dx.days[dx.getDay()],a:h<12 ?"AM":"PM",
           e:this.valueOf()*0.001,z:dx.zone,N:dx.getDay(),LY: Y%4==0&&(Y%100==Y%400),
-          dst: !!(new Date(1970,1,1).getTimezoneOffset()-dx.getTimezoneOffset())}; break;
+          dst: !!(new Date(1970,1,1).getTimezoneOffset()-dx.getTimezoneOffset()),
+          ofs: -dx.getTimezoneOffset()}; break;
       default:
         var flags = dx.style(); flags['YYYY'] = flags.Y; flags['hh'] = ('0'+flags['h']).substr(0,2); if (flags['h']>12) flags['h'] %= 12;
         var token = /Y(?:YYY|Y)?|S[MD]|0?([MDNhms])\1?|[aexz]|"[^"]*"|'[^']*'/g;
